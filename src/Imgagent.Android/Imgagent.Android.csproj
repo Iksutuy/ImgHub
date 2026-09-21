@@ -11,7 +11,7 @@
     <Nullable>enable</Nullable>
     <ApplicationId>com.imgagent.app</ApplicationId>
     <ApplicationVersion>1</ApplicationVersion>
-    <ApplicationDisplayVersion>5.19.0</ApplicationDisplayVersion>
+    <ApplicationDisplayVersion>5.22.0</ApplicationDisplayVersion>
     <AndroidPackageFormat>apk</AndroidPackageFormat>
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
     <!-- 图标走 Resources/mipmap-*（多密度 + 自适应），见 tools/make-android-icons.ps1 -->

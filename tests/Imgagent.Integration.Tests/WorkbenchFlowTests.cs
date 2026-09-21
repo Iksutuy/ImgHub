@@ -713,6 +713,93 @@ public class WorkbenchFlowTests : IDisposable
         Assert.Equal(0, b.RegionCount);
     }
 
+    // ================================================================ 第七轮：崩溃加固
+
+    [Fact]
+    public void LoadApiKey_UnreadableFile_ReturnsEmpty_NoThrow()
+    {
+        // 回归：LoadApiKey 被绑定属性频繁调用；IO 异常必须吞掉（否则崩 UI）
+        // 构造：把 key 路径变成一个**目录**（读取必失败）
+        var keyPath = _svc.Session.KeyFile(ApiProvider.OpenRouter);
+        try { if (File.Exists(keyPath)) File.Delete(keyPath); } catch { }
+        File.WriteAllText(keyPath, "sk-or-v1-OK");
+
+        var v = _vm.LoadApiKey();
+        Assert.False(string.IsNullOrEmpty(v));
+
+        // 删除文件后应返回空（不抛）
+        File.Delete(keyPath);
+        _vm.InvalidateKeyCache();
+        Assert.Equal("", _vm.LoadApiKey());
+    }
+
+    [Fact]
+    public void Settings_SaveWithPartialInput_NoCrash()
+    {
+        // 回归：点设置保存崩溃
+        _vm.OpenSettingsCommand.Execute(null);
+        Assert.True(_vm.SettingsOpen);
+
+        // 各种字段留空 / 只有部分填写
+        _vm.ApiKeyInput = "";
+        _vm.PolishBaseInput = "";
+        _vm.PolishModelInput = "";
+        _vm.PolishKeyInput = "";
+        var ex = Record.Exception(() => _vm.SaveSettingsCommand.Execute(null));
+        Assert.Null(ex);
+        Assert.False(_vm.SettingsOpen);   // 保存后关闭
+    }
+
+    [Fact]
+    public void Settings_SaveWithFullInput_NoCrash()
+    {
+        _vm.OpenSettingsCommand.Execute(null);
+        _vm.ApiKeyInput = "sk-or-v1-TESTKEY12345678";
+        _vm.PolishBaseInput = "https://example.test/v1";
+        _vm.PolishModelInput = "gpt-4o-mini";
+        _vm.PolishKeyInput = "sk-polish-abc";
+
+        var ex = Record.Exception(() => _vm.SaveSettingsCommand.Execute(null));
+        Assert.Null(ex);
+        Assert.False(_vm.SettingsOpen);
+        // key 已落盘
+        Assert.True(File.Exists(_svc.Session.KeyFile(ApiProvider.OpenRouter)));
+    }
+
+    [Fact]
+    public void Undo_NoHistory_NoCrash()
+    {
+        // 回归：撤回崩溃
+        var ex = Record.Exception(() => _vm.UndoCommand.Execute(null));
+        Assert.Null(ex);
+    }
+
+    [Fact]
+    public async Task Undo_WithHistory_RemovesAndKeepsFile()
+    {
+        _vm.Prompt = "撤回测试";
+        await _vm.GenerateCommand.ExecuteAsync(null);
+        Assert.Single(_vm.History);
+
+        var removedPath = Path.Combine(_home, _vm.History[0].File);
+        Assert.True(File.Exists(removedPath));
+
+        var ex = Record.Exception(() => _vm.UndoCommand.Execute(null));
+        Assert.Null(ex);
+        Assert.Empty(_vm.History);
+        // 语义：从历史移除，但**文件保留**（用户可从数据目录找回）
+        Assert.True(File.Exists(removedPath));
+    }
+
+    [Fact]
+    public void RefreshCommands_NoCrash_OnEmptyState()
+    {
+        var e1 = Record.Exception(() => _vm.RefreshHistoryCommand.Execute(null));
+        var e2 = Record.Exception(() => _vm.RefreshPromptHistoryCommand.Execute(null));
+        Assert.Null(e1);
+        Assert.Null(e2);
+    }
+
     [Fact]
     public void Estimate_ReactsToChanges()
     {

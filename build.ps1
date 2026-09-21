@@ -65,7 +65,7 @@ function Build-Android {
 
     $out = Join-Path $root "$OutDir\android"
     New-Item -ItemType Directory -Force -Path $out | Out-Null
-    $dest = Join-Path $out "imgagent-5.19.0-android.apk"
+    $dest = Join-Path $out "imgagent-5.22.0-android.apk"
     Copy-Item $apk $dest -Force
     $mb = [math]::Round((Get-Item $dest).Length / 1MB, 2)
     Write-Host ("  -> " + $dest + " (" + $mb + " MB)") -ForegroundColor Green

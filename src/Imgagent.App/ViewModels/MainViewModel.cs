@@ -467,7 +467,9 @@ public partial class MainViewModel : ObservableObject
 
     // ================================================================ 撤回
     [RelayCommand]
-    private void Undo()
+    private void Undo() => Safe(UndoCore, "撤回");
+
+    private void UndoCore()
     {
         if (_sess.Items.Count == 0) { Log("没有可撤回的图", MessageLevel.Warn); return; }
         var removed = _sess.Items[0];
@@ -537,7 +539,9 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void RefreshHistory()
+    private void RefreshHistory() => Safe(RefreshHistoryCore, "刷新历史");
+
+    private void RefreshHistoryCore()
     {
         History.Clear();
         for (int i = 0; i < _sess.Items.Count; i++)
@@ -548,7 +552,9 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void RefreshPromptHistory()
+    private void RefreshPromptHistory() => Safe(RefreshPromptHistoryCore, "刷新提示词历史");
+
+    private void RefreshPromptHistoryCore()
     {
         PromptHistory.Clear();
         foreach (var p in _sess.LoadPromptHistory(limit: 50)) PromptHistory.Add(p);
@@ -581,17 +587,69 @@ public partial class MainViewModel : ObservableObject
     private void RebuildQualityOptions() => OnPropertyChanged(nameof(QualityOptions));
 
     // ================================================================ key
+    // ---- key 缓存（避免每次绑定求值都做文件 IO，且 IO 失败绝不抛异常）----
+    private string? _cachedKeyProvider;
+    private string _cachedKey = "";
+    private DateTime _cachedKeyMtime = DateTime.MinValue;
+    private bool _cachedKeyValid;
+
+    /// <summary>
+    /// 读取当前 provider 的 API key。
+    /// ⚠️ 本方法被绑定属性（IsConfigured / KeyStatusText）**频繁调用**，
+    /// 所以必须：① 全程 try/catch（IO 失败返回空，绝不抛）；② 缓存结果。
+    /// </summary>
     public string LoadApiKey()
     {
-        var env = Provider == ApiProvider.Apimart
-            ? Environment.GetEnvironmentVariable("IMGAGENT_APIMART_API_KEY")
-              ?? Environment.GetEnvironmentVariable("IMGAGENT_API_KEY")
-            : Environment.GetEnvironmentVariable("OPENROUTER_API_KEY")
-              ?? Environment.GetEnvironmentVariable("IMGAGENT_API_KEY");
-        if (!string.IsNullOrEmpty(env)) return env.Trim();
-        var f = _sess.KeyFile(Provider);
-        if (File.Exists(f)) return File.ReadAllText(f).Trim();
-        return "";
+        try
+        {
+            // 环境变量优先（不缓存，成本低）
+            var env = Provider == ApiProvider.Apimart
+                ? Environment.GetEnvironmentVariable("IMGAGENT_APIMART_API_KEY")
+                  ?? Environment.GetEnvironmentVariable("IMGAGENT_API_KEY")
+                : Environment.GetEnvironmentVariable("OPENROUTER_API_KEY")
+                  ?? Environment.GetEnvironmentVariable("IMGAGENT_API_KEY");
+            if (!string.IsNullOrEmpty(env)) return env.Trim();
+
+            var providerKey = Provider.Key();
+            var f = _sess.KeyFile(Provider);
+
+            // 缓存命中：同 provider 且文件未改动
+            if (_cachedKeyValid && _cachedKeyProvider == providerKey)
+            {
+                var mtime = File.Exists(f) ? File.GetLastWriteTimeUtc(f) : DateTime.MinValue;
+                if (mtime == _cachedKeyMtime) return _cachedKey;
+            }
+
+            // 重读
+            var val = "";
+            if (File.Exists(f))
+            {
+                // 共享读：避免"文件被占用"导致异常
+                using var fs = new FileStream(f, FileMode.Open, FileAccess.Read,
+                                              FileShare.ReadWrite);
+                using var sr = new StreamReader(fs);
+                val = (sr.ReadToEnd() ?? "").Trim();
+            }
+
+            _cachedKeyProvider = providerKey;
+            _cachedKey = val;
+            _cachedKeyMtime = File.Exists(f) ? File.GetLastWriteTimeUtc(f) : DateTime.MinValue;
+            _cachedKeyValid = true;
+            return val;
+        }
+        catch
+        {
+            // 任何 IO/权限异常 → 视为未配置（不崩 UI）
+            return "";
+        }
+    }
+
+    /// <summary>让 key 缓存失效（保存/删除 key 后调用）。</summary>
+    public void InvalidateKeyCache()
+    {
+        _cachedKeyValid = false;
+        _cachedKey = "";
+        _cachedKeyMtime = DateTime.MinValue;
     }
 
     [RelayCommand]
@@ -599,7 +657,9 @@ public partial class MainViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(key)) return;
         _sess.SaveKey(key.Trim(), Provider);
-        Log($"key 已保存", MessageLevel.Ok);
+        InvalidateKeyCache();          // 缓存失效，下次读取走文件
+        RefreshConfigured();
+        Log("key 已保存", MessageLevel.Ok);
     }
 
     // ================================================================ 设置
@@ -612,7 +672,9 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void OpenSettings()
+    private void OpenSettings() => Safe(OpenSettingsCore, "打开设置");
+
+    private void OpenSettingsCore()
     {
         ApiKeyInput = LoadApiKey();
         PolishBaseInput = _svc.Polish.BaseUrl;
@@ -626,7 +688,9 @@ public partial class MainViewModel : ObservableObject
     private void CloseSettings() => SettingsOpen = false;
 
     [RelayCommand]
-    private void SaveSettings()
+    private void SaveSettings() => Safe(SaveSettingsCore, "保存设置");
+
+    private void SaveSettingsCore()
     {
         if (!string.IsNullOrWhiteSpace(ApiKeyInput))
             _sess.SaveKey(ApiKeyInput.Trim(), Provider);
@@ -736,7 +800,9 @@ public partial class MainViewModel : ObservableObject
 
     // ================================================================ 区域标注
     [RelayCommand]
-    private void ToggleRegionMode()
+    private void ToggleRegionMode() => Safe(ToggleRegionModeCore, "切换标注模式");
+
+    private void ToggleRegionModeCore()
     {
         if (_sess.Current is null) { Log("还没有图可标注", MessageLevel.Warn); return; }
         RegionMode = !RegionMode;
@@ -874,6 +940,19 @@ public partial class MainViewModel : ObservableObject
     public sealed record Message(string Time, string Text, MessageLevel Level);
 
     public void LogPublic(string text, MessageLevel level = MessageLevel.Info) => Log(text, level);
+
+    /// <summary>
+    /// 命令安全执行包装：捕获任何异常并转为日志，**绝不让 UI 线程崩溃**。
+    /// 所有同步 [RelayCommand] 都应通过它执行（避免个别异常点炸掉整个应用）。
+    /// </summary>
+    private void Safe(Action action, string opName)
+    {
+        try { action(); }
+        catch (Exception ex)
+        {
+            Log($"{opName} 失败：{ex.Message}", MessageLevel.Err);
+        }
+    }
 
     private void Log(string text, MessageLevel level = MessageLevel.Info)
     {

@@ -1,0 +1,28 @@
+# ============================================================ 行尾与编码规范
+# 避免 Windows/Linux 协作时全文件 diff（CRLF vs LF）
+* text=auto eol=lf
+
+# C# / XAML / 配置
+*.cs      text eol=lf
+*.csproj  text eol=lf
+*.axaml   text eol=lf
+*.slnx    text eol=lf
+*.props   text eol=lf
+*.xml     text eol=lf
+*.json    text eol=lf
+*.md      text eol=lf
+*.ps1     text eol=lf
+*.py      text eol=lf
+
+# 二进制（不转换）
+*.png     binary
+*.jpg     binary
+*.ico     binary
+*.ttf     binary
+*.otf     binary
+*.apk     binary
+*.dll     binary
+*.exe     binary
+
+# Android 资源文件由 SDK 处理，不强制转换
+*.flat    binary
