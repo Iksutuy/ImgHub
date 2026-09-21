@@ -106,13 +106,36 @@
                        TextWrapping="Wrap" CornerRadius="8"
                        PlaceholderText="一只猫在窗台上，逆光，胶片感"/>
               <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button Content="生成" Classes="accent" Command="{Binding GenerateCommand}"
-                        IsEnabled="{Binding CanRun}"/>
-                <Button Content="编辑" Command="{Binding EditCommand}"
-                        IsEnabled="{Binding CanRun}"/>
-                <Button Content="润色" Command="{Binding PolishPromptCommand}"/>
-                <Button Content="清空" Click="OnClearPromptClick"
-                        ToolTip.Tip="清空提示词与当前标注"/>
+                <Button Classes="accent" Command="{Binding GenerateCommand}"
+                        IsEnabled="{Binding CanRun}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="&#xE768;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                               IsVisible="{Binding UseIcons}"/>
+                    <TextBlock Text="生成"/>
+                  </StackPanel>
+                </Button>
+                <Button Command="{Binding EditCommand}" IsEnabled="{Binding CanRun}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="&#xE70F;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                               IsVisible="{Binding UseIcons}"/>
+                    <TextBlock Text="编辑"/>
+                  </StackPanel>
+                </Button>
+                <Button Command="{Binding PolishPromptCommand}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="&#xE8E5;" FontFamily="Segoe MDL2 Assets" FontSize="14"
+                               IsVisible="{Binding UseIcons}"/>
+                    <TextBlock Text="润色"/>
+                  </StackPanel>
+                </Button>
+                <Button Click="OnClearPromptClick"
+                        ToolTip.Tip="清空提示词与当前标注">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="14"
+                               IsVisible="{Binding UseIcons}"/>
+                    <TextBlock Text="清空"/>
+                  </StackPanel>
+                </Button>
               </StackPanel>
               <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,4,0,0">
                 <TextBlock Grid.Column="0" Text="参考图（编辑时附带）" Classes="section"
@@ -538,6 +561,19 @@
                 <TextBox Text="{Binding PolishKeyInput}" PasswordChar="•"
                          PlaceholderText="润色 API key（留空不改）"/>
               </StackPanel>
+              <Rectangle Height="1" Fill="{DynamicResource AppBorderBrush}"/>
+
+              <TextBlock Text="界面选项" Classes="section"/>
+              <StackPanel Spacing="8">
+                <CheckBox Content="显示按钮图标" IsChecked="{Binding UseIcons}"
+                          ToolTip.Tip="关闭后按钮只显示文字（无图标）"/>
+                <CheckBox Content="深色主题" IsChecked="{Binding DarkTheme}"
+                          ToolTip.Tip="切换深色 / 浅色主题"/>
+                <!-- 离线模式（debug）：仅 IMGAGENT_DEBUG=1 时显示 -->
+                <CheckBox Content="离线模式（调试）" IsChecked="{Binding Offline}"
+                          IsVisible="{Binding ShowDebugOptions}"/>
+              </StackPanel>
+
               <Rectangle Height="1" Fill="{DynamicResource AppBorderBrush}"/>
               <TextBlock Text="数据目录" Classes="section"/>
               <TextBlock Text="{Binding HomePath}" Classes="dim mono" TextWrapping="Wrap"/>

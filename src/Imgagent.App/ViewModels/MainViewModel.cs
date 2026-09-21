@@ -804,6 +804,7 @@ public partial class MainViewModel : ObservableObject
         }
         _sess.Config.PolishBaseUrl = _svc.Polish.BaseUrl;
         _sess.Config.PolishModel = _svc.Polish.Model;
+        _sess.Config.UseIcons = UseIcons;          // #7 图标显示开关持久化
         _sess.SaveConfig();
         RefreshKeyStatus();
         RefreshConfigured();
