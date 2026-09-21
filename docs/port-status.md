@@ -528,6 +528,72 @@ src/Imgagent.App/Assets/Fonts/NotoSansSC.ttf   16.95 MB（从系统 NotoSansSC-V
 
 ---
 
+## 四·十四、仓库标准化 + 全量 Review 与鲁棒性加固（2026-09-21）
+
+### 仓库标准化（面向开源）
+
+**目录重组**（C# 提到根，Python 归 legacy）：
+
+```
+imgagent/                          原 avalonia/ 的内容提到根目录
+├── src/Imgagent.Core|App|Desktop|Android
+├── tests/Imgagent.Core.Tests|Integration.Tests
+├── legacy/                        原 mobile/（Python + curses 版）
+├── docs/                          （含原 avalonia/docs）
+├── tools/make-android-icons.ps1
+├── build.ps1 / make-icon.ps1 / Directory.Build.props / Imgagent.slnx
+├── README.md / LICENSE / NOTICE.md / .gitignore
+└── release/                       （.gitignore 排除，走 GitHub Releases）
+```
+
+**新增文件**：
+| 文件 | 说明 |
+|---|---|
+| `LICENSE` | GPL-3.0 全文 |
+| `NOTICE.md` | **第三方许可声明** —— 重点说明内嵌字体 Noto Sans SC 是 **OFL-1.1**（与 GPL 兼容，需保留声明） |
+| `.gitignore` | 排除 bin/obj、release、运行时 key/config、临时文件 |
+
+**git 规范化**：`core.autocrlf=false`（避免 Windows 换行污染），首个提交 **123 个文件**（源码 + 文档 + 测试，无产物）。
+
+### 全量 Review 发现并修复
+
+| # | 级别 | 问题 | 修复 |
+|---|---|---|---|
+| 1 | 🔴 | **宽/窄屏各持一个 `RegionCanvas`，切换布局时标注丢失**（用户画好标注 → 转屏 → 全没了） | `RegionCanvas.ExportShapes/ImportShapes` 快照传输；`OnSizeChanged` 切换前把数据搬到另一实例 |
+| 2 | 🔴 | **`RefImages` 无生命周期** —— 导入一次参考图后，**每次编辑都误带上**（污染结果） | 改为**一次性**（编辑后自动清空）；新增 `KeepRefImages` 开关 + XAML「保留」勾选（默认不勾） |
+| 3 | 🟡 | **单张图片下载失败静默丢弃** —— 4 张成功 1 张失败，用户看到 3 张却不知情 | `PollOutcome.DownloadFailures` 计数 → 汇总后在进度里明确提示「⚠ 部分产出缺失：N 个任务失败，M 张下载失败」+ 失败原因 |
+| 4 | 🟡 | **`TotalCost` 与 `Items` 求和可能偏差**（Undo 减的是均摊值，TotalCost 是 API 实际值） | `Session.ReconcileCost()`：偏差 > 1e-6 时以 Items 求和为准；`RefreshHistory` 时调用 |
+| 5 | 🟡 | **生成失败后 `BatchResults` 不清理** → 旧缩略图条残留，误导用户 | 生成开始前 + 失败分支都清空 |
+| 6 | 🟢 | 全部任务失败时错误信息不含原因 | 汇总 `failureReasons` 到异常消息 |
+
+### 死代码 / 假实现检查
+
+| 检查项 | 结果 |
+|---|---|
+| TODO / FIXME / HACK / NotImplemented | **0 处** |
+| 空 `catch` | 全部为**有意的容错**（存储写失败不阻断、缩略图解码失败返回 null），且均有注释说明 |
+| 未使用的公开成员 | 无（`ReconcileCost` 等新增成员均已被调用） |
+| 硬编码凭据 | **无**（key 全由用户配置） |
+| Core 引用 UI 框架 | **无**（架构红线保持） |
+
+### 验证
+
+| 项 | 结果 |
+|---|---|
+| Core 测试 | **55/55** ✅ |
+| 集成测试 | **42/42** ✅（本轮 +5 项回归） |
+| 合计 | **97/97** ✅ |
+| 桌面构建 | ✅ |
+| Android APK | 见下（含图标 + 字体 + 响应式 + 本轮修复） |
+
+**新增回归测试**：
+- `RefImages_ClearedAfterUse_ByDefault` / `RefImages_KeptWhenOptedIn`
+- `BatchResults_ClearedOnFailedGenerate`
+- `TotalCost_ReconcilesWithItems`
+- `RegionCanvas_ShapeTransferPreservesData`
+
+---
+
 ## 五、如何运行与测试
 
 ```powershell

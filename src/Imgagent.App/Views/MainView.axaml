@@ -113,9 +113,13 @@
                 <Button Content="润色提示词" Command="{Binding PolishPromptCommand}"/>
                 <Button Content="导入" Click="OnImportClick"/>
               </StackPanel>
-              <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
-                <TextBlock Grid.Column="0" Text="参考图（编辑时附带）" Classes="section"/>
-                <Button Grid.Column="1" Content="＋ 添加" Classes="toolbar" Padding="8,3"
+              <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,4,0,0">
+                <TextBlock Grid.Column="0" Text="参考图（编辑时附带）" Classes="section"
+                           VerticalAlignment="Center"/>
+                <CheckBox Grid.Column="1" Content="保留" IsChecked="{Binding KeepRefImages}"
+                          Margin="0,0,6,0" FontSize="12" VerticalAlignment="Center"
+                          ToolTip.Tip="勾选 = 参考图长期保留；不勾 = 一次编辑后自动清空（默认）"/>
+                <Button Grid.Column="2" Content="＋ 添加" Classes="toolbar" Padding="8,3"
                         Click="OnAddRefImageClick"
                         ToolTip.Tip="导入外部图片作为参考图（编辑时一并给模型）"/>
               </Grid>

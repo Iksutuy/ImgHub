@@ -233,21 +233,44 @@ public sealed class ImageApi : IImageApi
         double totalCost = 0;
         int totalTokens = 0;
         int failed = 0;
+        int dlFailures = 0;
+        var failureReasons = new List<string>();
         foreach (var r in results)
         {
-            if (r.Error is not null) { failed++; continue; }
+            if (r.Error is not null)
+            {
+                failed++;
+                failureReasons.Add(r.Error.Message);
+                continue;
+            }
             totalCost += r.Cost;
             totalTokens += r.Tokens;
+            dlFailures += r.DownloadFailures;
             outImages.AddRange(r.Images);
         }
+        // 部分失败要让用户知道（不能静默少给图）
+        if (failed > 0 || dlFailures > 0)
+        {
+            var detail = failed > 0 ? $"，{failed} 个任务失败" : "";
+            var detail2 = dlFailures > 0 ? $"，{dlFailures} 张下载失败" : "";
+            progress?.Report($"⚠ 部分产出缺失{detail}{detail2}");
+            if (failureReasons.Count > 0)
+                progress?.Report("失败原因：" + string.Join("；", failureReasons.Take(3)));
+        }
         if (outImages.Count == 0)
-            throw new ApiError($"所有任务都没有产出图片（tasks={tasks.Count}，失败={failed}）");
+        {
+            var why = failureReasons.Count > 0
+                ? string.Join("；", failureReasons.Take(2))
+                : "无图像数据";
+            throw new ApiError($"所有任务都没有产出图片（tasks={tasks.Count}，失败={failed}）：{why}");
+        }
         return new GenResult(outImages, totalCost, totalTokens,
                              new Dictionary<string, object?> { ["total_tokens"] = totalTokens });
     }
 
     private sealed record PollOutcome(List<(byte[], string)> Images, double Cost,
-                                      int Tokens, Exception? Error);
+                                      int Tokens, Exception? Error,
+                                      int DownloadFailures = 0);
 
     private async Task<PollOutcome> PollOneAsync(string taskId, string apiKey,
                                                  CancellationToken ct)
@@ -264,6 +287,7 @@ public sealed class ImageApi : IImageApi
                 tk.ValueKind == JsonValueKind.Number)
                 tokens = tk.GetInt32();
 
+            int downloadFailures = 0;
             if (td.TryGetProperty("result", out var result) &&
                 result.TryGetProperty("images", out var imgs) &&
                 imgs.ValueKind == JsonValueKind.Array)
@@ -287,10 +311,14 @@ public sealed class ImageApi : IImageApi
                         else if (ct2.Contains("webp")) media = "image/webp";
                         images.Add((bytes, media));
                     }
-                    catch { /* 单张下载失败不影响其它 */ }
+                    catch
+                    {
+                        // 单张下载失败不影响其它，但必须**计数**（否则用户不知道少了几张）
+                        downloadFailures++;
+                    }
                 }
             }
-            return new PollOutcome(images, cost, tokens, null);
+            return new PollOutcome(images, cost, tokens, null, downloadFailures);
         }
         catch (Exception ex)
         {

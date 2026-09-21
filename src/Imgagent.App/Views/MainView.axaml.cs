@@ -31,8 +31,21 @@ public partial class MainView : UserControl
     protected override void OnSizeChanged(SizeChangedEventArgs e)
     {
         base.OnSizeChanged(e);
-        if (Vm is not null)
-            Vm.IsWideLayout = e.NewSize.Width >= 900;
+        if (Vm is null) return;
+        var wasWide = Vm.IsWideLayout;
+        var nowWide = e.NewSize.Width >= 900;
+        if (wasWide == nowWide) return;
+
+        // 布局切换前：把当前可见画布的标注搬到另一个实例，
+        // 否则用户画好的标注会在切换时"消失"（两个实例各持一份数据）。
+        try
+        {
+            if (wasWide) RegionLayerNarrow.ImportShapes(RegionLayer.ExportShapes());
+            else         RegionLayer.ImportShapes(RegionLayerNarrow.ExportShapes());
+        }
+        catch { /* 同步失败不应阻断布局切换 */ }
+
+        Vm.IsWideLayout = nowWide;
     }
 
     private void OnPromptHistorySelected(object? sender, SelectionChangedEventArgs e)

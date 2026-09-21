@@ -112,6 +112,97 @@ public sealed class RegionCanvas : Control
         }
     }
 
+    /// <summary>
+    /// 笔画的**可序列化快照**（用于宽/窄屏两个画布实例共享同一份标注）。
+    /// 布局切换时把数据从一个实例搬到另一个，避免用户画好的标注丢失。
+    /// </summary>
+    public sealed class RegionSnapshot
+    {
+        public List<StrokeData> Strokes { get; init; } = new();
+    }
+
+    /// <summary>一笔的可序列化数据。</summary>
+    public sealed class StrokeData
+    {
+        public double R { get; set; }
+        public double G { get; set; }
+        public double B { get; set; }
+        public double Size { get; set; }
+        public int Tool { get; set; }
+        public bool IsOutline { get; set; }
+        public bool IsEllipse { get; set; }
+        public double X0 { get; set; }
+        public double Y0 { get; set; }
+        public double X1 { get; set; }
+        public double Y1 { get; set; }
+        public List<double> Points { get; set; } = new();   // 扁平 [x0,y0,x1,y1,...]
+    }
+
+    /// <summary>导出当前所有笔画（供另一个画布实例导入）。</summary>
+    public RegionSnapshot ExportShapes()
+    {
+        var snap = new RegionSnapshot();
+        foreach (var sh in _shapes)
+        {
+            if (sh is FreeStroke fs)
+            {
+                var d = new StrokeData
+                {
+                    R = fs.Color.R, G = fs.Color.G, B = fs.Color.B,
+                    Size = fs.Size, Tool = (int)fs.Tool,
+                };
+                foreach (var (x, y) in fs.Points) { d.Points.Add(x); d.Points.Add(y); }
+                snap.Strokes.Add(d);
+            }
+            else if (sh is OutlineShape os)
+            {
+                snap.Strokes.Add(new StrokeData
+                {
+                    R = os.Color.R, G = os.Color.G, B = os.Color.B,
+                    Size = os.StrokeWidth, Tool = (int)os.Tool,
+                    IsOutline = true, IsEllipse = os.IsEllipse,
+                    X0 = os.X0, Y0 = os.Y0, X1 = os.X1, Y1 = os.Y1,
+                });
+            }
+        }
+        return snap;
+    }
+
+    /// <summary>导入笔画（用于布局切换时同步另一实例的标注）。会覆盖现有内容。</summary>
+    public void ImportShapes(RegionSnapshot? snap)
+    {
+        _shapes.Clear();
+        _current = null;
+        if (snap is not null)
+        {
+            foreach (var d in snap.Strokes)
+            {
+                var color = Color.FromRgb((byte)d.R, (byte)d.G, (byte)d.B);
+                if (d.IsOutline)
+                {
+                    _shapes.Add(new OutlineShape
+                    {
+                        Color = color, Tool = (RegionTool)d.Tool, IsEllipse = d.IsEllipse,
+                        X0 = d.X0, Y0 = d.Y0, X1 = d.X1, Y1 = d.Y1,
+                        StrokeWidth = d.Size,
+                    });
+                }
+                else
+                {
+                    var fs = new FreeStroke
+                    {
+                        Color = color, Tool = (RegionTool)d.Tool, Size = d.Size,
+                    };
+                    for (int i = 0; i + 1 < d.Points.Count; i += 2)
+                        fs.Points.Add((d.Points[i], d.Points[i + 1]));
+                    _shapes.Add(fs);
+                }
+            }
+        }
+        InvalidateVisual();
+        RegionCountChanged?.Invoke(this, _shapes.Count);
+    }
+
     private readonly List<Shape> _shapes = new();
     private Shape? _current;
     private Point? _lastPointer;

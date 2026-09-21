@@ -52,6 +52,22 @@ public sealed class Session
     /// 按 provider 累计花费（USD）。
     /// 旧数据没有 provider 字段时按「当前 provider」计入，保证不丢账。
     /// </summary>
+    /// <summary>
+    /// 校正 TotalCost 与 Items 的一致性。
+    /// 起因：Undo 减的是 item.Cost（均摊值），而 TotalCost 累加的是 API 返回的实际值，
+    /// 多次增减后可能偏差。以 Items 求和为准（若偏差 > 1e-6 则修正）。
+    /// </summary>
+    public void ReconcileCost()
+    {
+        double sum = 0;
+        foreach (var it in Items) sum += it.Cost;
+        // 仅在明显不一致时修正（容忍浮点误差）
+        if (Math.Abs(sum - TotalCost) > 1e-6 && sum > 0)
+            TotalCost = sum;
+        else if (Items.Count == 0 && TotalCost < 1e-6)
+            TotalCost = 0;
+    }
+
     public double CostForProvider(ApiProvider provider)
     {
         var key = provider.Key();

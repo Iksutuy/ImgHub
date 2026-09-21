@@ -132,6 +132,9 @@ public partial class MainViewModel : ObservableObject
     /// 由视图在 SizeChanged 时设置（Avalonia 无内置媒体查询）。
     /// </summary>
     [ObservableProperty] private bool _isWideLayout = true;
+
+    /// <summary>参考图是否保留（默认 false = 一次性，用完即清，避免污染后续任务）。</summary>
+    [ObservableProperty] private bool _keepRefImages;
     public string SetupHint => "尚未配置 API key —— 点右下角「设置」填写后即可开始生成";
     public bool HasBatchResults => BatchResults.Count > 1;
 
@@ -309,6 +312,8 @@ public partial class MainViewModel : ObservableObject
 
         Busy = true;
         Status = editMode ? "编辑中…" : "生成中…";
+        BatchResults.Clear();                      // 清掉上一次的缩略图（本次会重填）
+        OnPropertyChanged(nameof(HasBatchResults));
         FlushConfig();
         var t0 = DateTime.UtcNow;
         try
@@ -366,7 +371,12 @@ public partial class MainViewModel : ObservableObject
             await ShowPreviewAsync(_sess.Current);
             Prompt = "";
         }
-        else Log("生成失败：图片未能保存", MessageLevel.Err);
+        else
+        {
+            Log("生成失败：图片未能保存", MessageLevel.Err);
+            BatchResults.Clear();                  // 失败清空缩略图（避免显示旧结果）
+            OnPropertyChanged(nameof(HasBatchResults));
+        }
     }
 
     private string? SaveImageToHome(byte[] data, string media, string prompt, int seq)
@@ -503,6 +513,7 @@ public partial class MainViewModel : ObservableObject
         History.Clear();
         for (int i = 0; i < _sess.Items.Count; i++)
             History.Add(new HistoryRow(_sess.Items[i], _sess.HomePath));
+        _sess.ReconcileCost();                       // 校正与 Items 的一致性
         TotalCost = _sess.TotalCost;
         ProviderCost = _sess.CostForProvider(_provider);
     }
@@ -758,6 +769,12 @@ public partial class MainViewModel : ObservableObject
                 _resolution, _outputFormat, new Progress<string>(m => Log(m)));
             await LandResultsAsync(res, finalPrompt, true, DateTime.UtcNow);
             RegionMode = false;
+            // 参考图默认「一次性」：用完即清，避免污染后续无关任务
+            if (RefImages.Count > 0 && !KeepRefImages)
+            {
+                RefImages.Clear();
+                Log("参考图已用完并清空（如需复用请重新添加）", MessageLevel.Info);
+            }
         }
         catch (Exception ex) { Log($"区域编辑失败：{ex.Message}", MessageLevel.Err); }
         finally { Busy = false; Status = Offline ? "离线" : "就绪"; }
