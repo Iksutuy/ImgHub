@@ -83,9 +83,41 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _regionMode;
     [ObservableProperty] private string _brushColor = "#FF3B30";
     [ObservableProperty] private double _brushSize = 24;
+
+    /// <summary>可用粗细档（像素）。UI 用 Slider 或下拉都能绑。</summary>
+    public double BrushSizeMin => 2;
+    public double BrushSizeMax => 80;
+
+    /// <summary>粗细显示文本（供 UI 展示当前值）。</summary>
+    public string BrushSizeText => $"{BrushSize:0}px";
     [ObservableProperty] private string _annotatedPath = "";
+
+    /// <summary>
+    /// 标注按「底图路径」缓存 —— 实现「标注跟随图片」：
+    ///   · 切换历史图片时，当前图的标注被保存，目标图的标注被恢复；
+    ///   · 同一张图来回切换，标注不会丢。
+    /// 值 = 该图的标注快照（RegionCanvas.RegionSnapshot）。
+    /// </summary>
+    private readonly Dictionary<string, Controls.RegionCanvas.RegionSnapshot> _regionCache = new();
+
+    /// <summary>保存当前画布的标注到缓存（由视图在切换底图前调用）。</summary>
+    public void SaveRegionsFor(string? imagePath, Controls.RegionCanvas.RegionSnapshot snap)
+    {
+        if (string.IsNullOrEmpty(imagePath)) return;
+        if (snap.Strokes.Count == 0) _regionCache.Remove(imagePath);
+        else _regionCache[imagePath] = snap;
+    }
+
+    /// <summary>取出某张图已缓存的标注（可能为 null）。</summary>
+    public Controls.RegionCanvas.RegionSnapshot? GetRegionsFor(string? imagePath)
+    {
+        if (string.IsNullOrEmpty(imagePath)) return null;
+        return _regionCache.TryGetValue(imagePath, out var s) ? s : null;
+    }
+
+    /// <summary>清空所有缓存（内存释放）。</summary>
+    public void ClearRegionCache() => _regionCache.Clear();
     [ObservableProperty] private int _toolIndex;
-    [ObservableProperty] private int _intentIndex;
     [ObservableProperty] private bool _paletteOpen;
 
     public ObservableCollection<HistoryRow> History { get; } = new();
@@ -106,8 +138,10 @@ public partial class MainViewModel : ObservableObject
     public string[] AspectOptions => Catalog.Aspects;
     public string[] ResolutionOptions => Catalog.Resolutions;
     public string[] OutputFormatOptions => Catalog.OutputFormats;
-    public IReadOnlyList<string> ToolNames { get; } = new[] { "马克笔", "画笔", "方框", "圆圈", "橡皮" };
-    public IReadOnlyList<string> IntentNames { get; } = new[] { "要修改（红）", "要保留（绿）" };
+    /// <summary>与 RegionCanvas.RegionTool 枚举顺序严格对应：
+    /// 0=马克笔（薄层涂抹）1=画笔 2=方框 3=圆圈 4=橡皮。</summary>
+    public IReadOnlyList<string> ToolNames { get; } =
+        new[] { "马克笔", "画笔", "方框", "圆圈", "橡皮" };
     public IReadOnlyList<string> PaletteColors { get; } = new[]
     {
         "#FF3B30", "#FF9500", "#FFD60A", "#32D74B", "#00C7BE", "#0A84FF",
@@ -116,8 +150,6 @@ public partial class MainViewModel : ObservableObject
     };
     public Controls.RegionCanvas.RegionTool CanvasTool =>
         (Controls.RegionCanvas.RegionTool)Math.Clamp(_toolIndex, 0, 4);
-    public Controls.RegionCanvas.RegionIntent CanvasIntent =>
-        (Controls.RegionCanvas.RegionIntent)Math.Clamp(_intentIndex, 0, 1);
     public string PolishCounterText =>
         PolishCandidates.Count == 0 ? "" : $"{PolishIndex + 1}/{PolishCandidates.Count}";
 
@@ -211,11 +243,8 @@ public partial class MainViewModel : ObservableObject
         PersistConfig();
     }
     partial void OnToolIndexChanged(int value) => OnPropertyChanged(nameof(CanvasTool));
-    partial void OnIntentIndexChanged(int value)
-    {
-        BrushColor = value == 1 ? "#32D74B" : "#FF3B30";
-        OnPropertyChanged(nameof(CanvasIntent));
-    }
+
+    partial void OnBrushSizeChanged(double value) => OnPropertyChanged(nameof(BrushSizeText));
     partial void OnPolishIndexChanged(int value) => OnPropertyChanged(nameof(PolishCounterText));
 
     // ================================================================ 节流持久化
@@ -717,6 +746,24 @@ public partial class MainViewModel : ObservableObject
 
     [RelayCommand]
     private void ClearRegions() { RegionCount = 0; Log("已清除全部标注", MessageLevel.Info); }
+
+    /// <summary>标注区域蒙版路径（白=要改，黑=保留）。可随参考图一起送给模型。</summary>
+    [ObservableProperty] private string _annotatedMaskPath = "";
+
+    /// <summary>保存「修改区域蒙版」到数据目录（供支持 mask 的模型使用）。</summary>
+    public void SetAnnotatedMask(byte[] maskPng)
+    {
+        try
+        {
+            var name = Session.SafeFilename(
+                $"mask_{DateTime.Now:MMdd_HHmmss}", "region", ".png", limit: 24);
+            var path = Path.Combine(_sess.HomePath, name);
+            File.WriteAllBytes(path, maskPng);
+            AnnotatedMaskPath = path;
+            Log($"修改区域蒙版已保存：{name}", MessageLevel.Info);
+        }
+        catch (Exception ex) { Log($"蒙版保存失败：{ex.Message}", MessageLevel.Warn); }
+    }
 
     public void SetAnnotatedImage(byte[] png, int regionCount)
     {

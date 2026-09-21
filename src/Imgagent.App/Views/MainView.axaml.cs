@@ -20,9 +20,47 @@ public partial class MainView : UserControl
         {
             if (DataContext is MainViewModel vm) vm.RegionCount = n;
         };
+
+        // 订阅 PreviewPath 变化 → 实现「标注跟随图片」
+        DataContextChanged += (_, _) =>
+        {
+            if (Vm is { } vm)
+            {
+                vm.PropertyChanged -= OnVmPropertyChanged;
+                vm.PropertyChanged += OnVmPropertyChanged;
+                _lastPreviewPath = vm.PreviewPath;
+            }
+        };
     }
 
     private MainViewModel? Vm => DataContext as MainViewModel;
+
+    /// <summary>上一次预览的图片路径（用于切换时保存/恢复标注）。</summary>
+    private string? _lastPreviewPath;
+
+    /// <summary>
+    /// 「标注跟随图片」：底图切换时，先把当前图的标注存入缓存，
+    /// 再恢复目标图已缓存的标注。由 DataContextChanged 订阅 PreviewPath 变化触发。
+    /// </summary>
+    private void OnVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(MainViewModel.PreviewPath)) return;
+        if (Vm is null) return;
+
+        var newPath = Vm.PreviewPath;
+        if (newPath == _lastPreviewPath) return;
+
+        // ① 保存旧图的标注
+        if (_lastPreviewPath is not null)
+            Vm.SaveRegionsFor(_lastPreviewPath, ActiveCanvas.ExportShapes());
+
+        // ② 恢复新图的标注（没有则清空）
+        var snap = Vm.GetRegionsFor(newPath);
+        RegionLayer.ImportShapes(snap);
+        RegionLayerNarrow.ImportShapes(snap);
+
+        _lastPreviewPath = newPath;
+    }
 
     /// <summary>
     /// 响应式断点：宽度 ≥900px 用三栏，否则纵向堆叠。
@@ -136,7 +174,15 @@ public partial class MainView : UserControl
     }
 
     private void OnToggleRegionClick(object? sender, RoutedEventArgs e)
-        => Vm?.ToggleRegionModeCommand.Execute(null);
+    {
+        Vm?.ToggleRegionModeCommand.Execute(null);
+        // 进入标注模式后让画布获焦（否则首次按下只聚焦、不落笔）
+        if (Vm?.RegionMode == true)
+        {
+            var canvas = ActiveCanvas;
+            canvas.Focus();
+        }
+    }
 
     private void OnClearRegionsClick(object? sender, RoutedEventArgs e)
     {
@@ -162,12 +208,34 @@ public partial class MainView : UserControl
                 return;
             }
             Vm.SetAnnotatedImage(png, canvas.RegionCount);
+
+            // 同时导出「修改区域蒙版」（白=要改，黑=保留），供支持 mask 的模型使用
+            try
+            {
+                var mask = canvas.ExportMask();
+                if (mask is not null) Vm.SetAnnotatedMask(mask);
+            }
+            catch { /* mask 可选，失败不影响主流程 */ }
+
             await Vm.EditWithRegionsCommand.ExecuteAsync(null);
         }
         catch (Exception ex)
         {
             Vm?.LogPublic($"区域编辑失败：{ex.Message}", MainViewModel.MessageLevel.Err);
         }
+    }
+
+    // ---------------------------------------------------------------- 缩放（#7）
+    private void OnZoomInClick(object? sender, RoutedEventArgs e)
+        => ActiveCanvas.ZoomBy(1.25);
+
+    private void OnZoomOutClick(object? sender, RoutedEventArgs e)
+        => ActiveCanvas.ZoomBy(1 / 1.25);
+
+    private void OnZoomResetClick(object? sender, RoutedEventArgs e)
+    {
+        RegionLayer.ResetView();
+        RegionLayerNarrow.ResetView();
     }
 
     private void OnPaletteColorClick(object? sender, RoutedEventArgs e)

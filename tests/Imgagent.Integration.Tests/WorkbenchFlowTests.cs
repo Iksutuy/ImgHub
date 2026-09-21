@@ -547,23 +547,60 @@ public class WorkbenchFlowTests : IDisposable
     }
 
     [Fact]
-    public void RegionTools_IntentDrivesColor()
+    public void RegionTools_MappedAndNoIntent()
     {
-        // 语义切换 → 笔刷色自动变（红=改 / 绿=保留）
-        _vm.IntentIndex = 0;   // 要修改
-        Assert.Equal("#FF3B30", _vm.BrushColor);
-        _vm.IntentIndex = 1;   // 要保留
-        Assert.Equal("#32D74B", _vm.BrushColor);
-
-        // 工具枚举映射（对齐新枚举顺序：0=马克笔 1=画笔 2=方框 3=圆圈 4=橡皮）
+        // 用户需求 #5：已去掉「语义」概念
+        // 工具枚举顺序：0=马克笔 1=画笔 2=方框 3=圆圈 4=橡皮
+        _vm.ToolIndex = 0;
+        Assert.Equal(Imgagent.App.Controls.RegionCanvas.RegionTool.Marker, _vm.CanvasTool);
         _vm.ToolIndex = 2;
         Assert.Equal(Imgagent.App.Controls.RegionCanvas.RegionTool.Rectangle, _vm.CanvasTool);
         _vm.ToolIndex = 3;
         Assert.Equal(Imgagent.App.Controls.RegionCanvas.RegionTool.Ellipse, _vm.CanvasTool);
         _vm.ToolIndex = 4;
         Assert.Equal(Imgagent.App.Controls.RegionCanvas.RegionTool.Eraser, _vm.CanvasTool);
-        _vm.ToolIndex = 0;
-        Assert.Equal(Imgagent.App.Controls.RegionCanvas.RegionTool.Marker, _vm.CanvasTool);
+    }
+
+    [Fact]
+    public void BrushSize_Adjustable()
+    {
+        // 用户需求 #4：粗细必须可调
+        Assert.True(_vm.BrushSizeMin > 0);
+        Assert.True(_vm.BrushSizeMax > _vm.BrushSizeMin);
+
+        _vm.BrushSize = 2;
+        Assert.Contains("2", _vm.BrushSizeText);
+        _vm.BrushSize = 80;
+        Assert.Contains("80", _vm.BrushSizeText);
+    }
+
+    [Fact]
+    public void RegionCache_PerImage()
+    {
+        // 用户需求 #6：标注跟随图片（按图缓存，切换不丢）
+        var pathA = Path.Combine(_home, "a.png");
+        var pathB = Path.Combine(_home, "b.png");
+
+        Assert.Null(_vm.GetRegionsFor(pathA));      // 初始无缓存
+
+        var canvas = new Imgagent.App.Controls.RegionCanvas();
+        var snap = canvas.ExportShapes();           // 空快照
+        _vm.SaveRegionsFor(pathA, snap);
+        // 空快照不入缓存（避免堆积空对象）
+        Assert.Null(_vm.GetRegionsFor(pathA));
+
+        // 清缓存不应崩
+        _vm.ClearRegionCache();
+        Assert.Null(_vm.GetRegionsFor(pathB));
+    }
+
+    [Fact]
+    public void RegionCanvas_MaskExport_NoShapesReturnsNull()
+    {
+        // 无标注时导出应返回 null（而非空白图误导用户）
+        var canvas = new Imgagent.App.Controls.RegionCanvas();
+        Assert.Null(canvas.ExportComposite());
+        Assert.Null(canvas.ExportMask());
     }
 
     [Fact]

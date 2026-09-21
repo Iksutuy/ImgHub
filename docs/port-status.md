@@ -594,6 +594,111 @@ imgagent/                          原 avalonia/ 的内容提到根目录
 
 ---
 
+## 四·十五、第六轮修复（2026-09-21，按用户实测反馈 7 项）
+
+### #1 字体模糊 —— 根因是可变字体的默认字重
+
+**现象**：内嵌 NotoSansSC 后中文能显示，但**笔画极细、发虚模糊**。
+
+**根因（实测定位）**：`NotoSansSC-VF.ttf` 是**可变字体**，
+其 `wght` 轴的 **`defaultValue` = 100（Thin 极细）**！
+Avalonia 按默认值渲染 → 笔画细弱发虚。
+
+```python
+# 验证输出的轴信息
+轴: {'wght': 100.0}   ← 默认就是 100，不是 400
+```
+
+**修复**：用 fontTools 把可变字体**实例化到 wght=400（Regular）**并子集化：
+
+```python
+font = instancer.instantiateVariableFont(font, {"wght": 400}, updateFontNames=True)
+subsetter.populate(text=常用汉字+拉丁+标点)   # 21483 字符
+```
+
+产出 `NotoSansSC-Regular.ttf`：**静态**（无 fvar/gvar/HVAR）、**7.15 MB**（原 16.95 MB）。
+脚本归档为 `tools/make-static-font.py`（可复现）。
+
+**实测**：中文笔画饱满清晰，模糊消失。
+
+### #2 自绘标题栏（仿 Reasonix）
+
+```xml
+<Window ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="40"
+        SystemDecorations="None" Background="Transparent">
+  <Border CornerRadius="10" ...>           <!-- 圆角 -->
+    <Grid RowDefinitions="40,*">
+      <Border Name="TitleBar" ...>          <!-- 自绘标题栏 -->
+        <!-- 左：图标 + 标题 + 状态；中：拖拽区；右：最小化/最大化/关闭 -->
+```
+
+- 手动实现拖拽移动（`BeginMoveDrag`）+ 双击最大化
+- 窗口按钮用 Segoe MDL2 字形，关闭按钮悬停变红
+- **踩坑**：Avalonia 12 **移除了 `ExtendClientAreaChromeHints`**（编译报 AVLN2000），
+  只需 `ExtendClientAreaToDecorationsHint` + `SystemDecorations="None"`
+
+### #3 马克笔改为「蒙版薄层」+ 导出修改蒙版
+
+**现象**：马克笔拖动后变成不透明，且重复涂抹颜色加深。
+
+**修复**：
+1. **蒙版式薄层**：所有标记先画到**不透明 mask**，再统一替换为
+   「原色 + 固定 alpha(110)」贴回 → **重复涂抹不加深**，始终薄薄一层
+2. **新增 `ExportMask()`**：导出「修改区域蒙版」（**白=要改，黑=保留**），
+   保存为 `mask_*.png` 供支持 inpainting/mask 的模型使用
+3. `LayerAlpha` 可绑定调节（默认 110）
+
+**传给模型的内容**：
+- 参考图第 1 位 = **标注合成图**（原图 + 薄层标记）
+- 提示词追加说明「图中高亮区域即需修改的部分」
+- 同时保存 mask 文件（`AnnotatedMaskPath`），为将来接 mask 参数预留
+
+### #4 粗细不可调 —— 缺 UI 控件
+
+**根因**：`BrushSize` 有绑定但 **XAML 里没有对应控件**。
+
+**修复**：工具栏加 **Slider**（2–80px）+ 实时显示 `24px`；
+`BrushSizeText` 属性随值变化通知。
+
+### #5 去掉「语义」功能
+
+移除 `IntentNames` / `IntentIndex` / `CanvasIntent` 及全部 XAML 下拉与绑定。
+统一用当前画笔色表示"这里要改"。
+
+### #6 标注跟随图片 + 编辑历史
+
+**现象**：切换历史图片时，上一个图的标注不消失（串图）。
+
+**修复**：`MainViewModel` 新增**按图缓存**：
+```csharp
+private readonly Dictionary<string, RegionSnapshot> _regionCache;
+public void SaveRegionsFor(string? imagePath, RegionSnapshot snap);
+public RegionSnapshot? GetRegionsFor(string? imagePath);
+```
+`MainView` 订阅 `PreviewPath` 变化 → **切换前保存旧图标注，切换后恢复新图标注**。
+同一张图来回切换，标注不丢（即"编辑历史"）。
+
+### #7 画布式缩放（标记跟随）
+
+`RegionCanvas` 新增视图变换：
+- **滚轮缩放**（0.2×–8×）
+- **右键 / 中键 / 空格+左键平移**
+- **快捷键 `0` 复位**；工具栏另有 `−` `＋` `复位` 按钮
+- 坐标**归一化存储** + 渲染时统一变换 → **标记天然绑定在图片上，随缩放平移同步**
+
+### 验证
+
+| 项 | 结果 |
+|---|---|
+| Core 测试 | 55/55 ✅ |
+| 集成测试 | **45/45** ✅（更新语义相关断言为新的工具/粗细/缓存断言） |
+| 合计 | **100/100** ✅ |
+| 桌面实测 | ✅ 字体清晰、自绘标题栏、工具栏（工具+粗细滑块+缩放按钮+调色板） |
+| 死代码检查 | ✅ 无残留（`IntentIndex`/`CanvasIntent` 已彻底移除） |
+
+---
+
 ## 五、如何运行与测试
 
 ```powershell

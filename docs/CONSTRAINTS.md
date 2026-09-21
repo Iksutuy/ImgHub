@@ -286,6 +286,22 @@ Python 版的列冲突测试假定 ncurses 坐标语义；GUI 版测试用真实
 | 启动闪退（0xE0434352） | 窗口图标 PNG-in-ICO | D4：窗口用 PNG |
 | 启动闪退（NullReference） | config 里 `model: null` | B4：Sanitize 归一化 |
 | 中文显示方框 | Android 缺 CJK 字体 | D5：内嵌字体 |
+| 中文发虚模糊 | 内嵌了**可变字体**（默认字重 100） | D6：改用静态字体 |
+| Avalonia 12 编译报 ExtendClientAreaChromeHints | 该属性已移除 | 只用 ExtendClientAreaToDecorationsHint |
+
+### D6. 内嵌字体必须是**静态**字体，不能用可变字体（VF）
+
+```xml
+<!-- ❌ 错误：VF 的 wght 轴默认值可能是 100(Thin) → 笔画极细、发虚模糊 -->
+<FontFamily x:Key="AppFont">avares://.../NotoSansSC-VF.ttf#Noto Sans SC</FontFamily>
+
+<!-- ✅ 正确：静态 Regular，字重确定 -->
+<FontFamily x:Key="AppFont">avares://.../NotoSansSC-Regular.ttf#Noto Sans SC</FontFamily>
+```
+
+**代价**：`NotoSansSC-VF.ttf` 的 `fvar` 表里 `wght` 默认值是 **100**，
+Avalonia 按该默认值渲染 → 中文能显示但**笔画细弱发虚**。
+修复：用 fontTools 实例化到 wght=400 并子集化 —— `tools/make-static-font.py`（17 MB → 7.15 MB）。
 | publish 报文件锁定 | 旧进程未杀 | E2：先 Stop-Process |
 | 参数改完重启就丢 | 节流失效 / snake_case 未映射 | 尾触发节流 + `[JsonPropertyName]` |
 | AOT exe 单独拷走崩溃 | 原生 DLL 未随行 | E1：整目录分发 |

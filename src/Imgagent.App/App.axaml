@@ -81,8 +81,14 @@
 
         ⚠️ Android 上系统字体名不可靠（Avalonia CJK 回归 #19868/#20195），
         中文会渲染成方框；所以 **必须内嵌字体**（见 CONSTRAINTS D5）。
+
+        ⚠️ 必须用**静态**字体，不能用可变字体（VF）：
+        原 NotoSansSC-VF.ttf 的 wght 轴默认值是 100（Thin），
+        Avalonia 会按该默认值渲染 → 笔画极细、发虚模糊。
+        已用 fontTools 实例化到 wght=400 并子集化（17 MB → 7.15 MB）。
+        重新生成：python tools\make-static-font.py
       -->
-      <FontFamily x:Key="AppFont">avares://Imgagent.App/Assets/Fonts/NotoSansSC.ttf#Noto Sans SC, Microsoft YaHei UI, Microsoft YaHei, Noto Sans CJK SC, Segoe UI, sans-serif</FontFamily>
+      <FontFamily x:Key="AppFont">avares://Imgagent.App/Assets/Fonts/NotoSansSC-Regular.ttf#Noto Sans SC, Microsoft YaHei UI, Microsoft YaHei, Noto Sans CJK SC, Segoe UI, sans-serif</FontFamily>
     </ResourceDictionary>
   </Application.Resources>
 
@@ -138,6 +144,32 @@
     </Style>
     <Style Selector="TextBlock.mono">
       <Setter Property="FontFamily" Value="Consolas, Menlo, monospace" />
+    </Style>
+
+    <!-- ============ 自绘标题栏（仿 Reasonix 风格）============ -->
+    <!-- 标题栏按钮：无背景、悬停浅灰、关闭按钮悬停红色 -->
+    <Style Selector="Button.titlebar">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource AppTextSubBrush}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Width" Value="34" />
+      <Setter Property="Height" Value="28" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.titlebar:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AppSurfaceAltBrush}" />
+    </Style>
+    <!-- 关闭按钮：悬停变红 -->
+    <Style Selector="Button.titlebar.close:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#E81123" />
+    </Style>
+    <Style Selector="Button.titlebar.close:pointerover">
+      <Setter Property="Foreground" Value="White" />
     </Style>
   </Application.Styles>
 </Application>
