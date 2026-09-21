@@ -168,6 +168,18 @@ public partial class MainViewModel : ObservableObject
     /// </summary>
     [ObservableProperty] private bool _isWideLayout = true;
 
+    /// <summary>
+    /// 调试选项是否可见（#3：离线模式归入 debug 功能）。
+    /// 仅当环境变量 IMGAGENT_DEBUG=1 时为 true。
+    /// </summary>
+    public bool ShowDebugOptions =>
+        string.Equals(Environment.GetEnvironmentVariable("IMGAGENT_DEBUG"), "1",
+                      StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>是否显示按钮图标（用户需求 #7：可在设置里开关）。默认开。</summary>
+    [ObservableProperty] private bool _useIcons = true;
+
+
     /// <summary>参考图是否保留（默认 false = 一次性，用完即清，避免污染后续任务）。</summary>
     [ObservableProperty] private bool _keepRefImages;
     public string SetupHint => "尚未配置 API key —— 点右下角「设置」填写后即可开始生成";
@@ -502,6 +514,61 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void Undo() => Safe(UndoCore, "撤回");
 
+    /// <summary>
+    /// 删除一条历史（用户需求 #11）：
+    ///   · 从历史列表移除；
+    ///   · **同时删除磁盘上的图片文件**（右键删除的语义 = 彻底删除）；
+    ///   · 从预览/缩略图中清理。
+    /// </summary>
+    [RelayCommand]
+    private void DeleteHistoryItem(Imgagent.Core.Models.Item item)
+    {
+        Safe(() =>
+        {
+            if (item is null) return;
+            if (_sess.RemoveItem(item))
+            {
+                var path = item.Path(_sess.HomePath);
+                try { if (File.Exists(path)) File.Delete(path); } catch { }
+                TotalCost = _sess.TotalCost;
+                ProviderCost = _sess.CostForProvider(_provider);
+                _sess.SaveState();
+                Log($"已删除 {item.File}（含文件）", MessageLevel.Ok);
+                RefreshHistory();
+            }
+        }, "删除历史");
+    }
+
+    /// <summary>仅从历史列表移除（保留磁盘文件）。轻量删除。</summary>
+    [RelayCommand]
+    private void DeleteListItem(Imgagent.Core.Models.Item item)
+    {
+        Safe(() =>
+        {
+            if (item is null) return;
+            if (_sess.RemoveItem(item))
+            {
+                TotalCost = _sess.TotalCost;
+                ProviderCost = _sess.CostForProvider(_provider);
+                _sess.SaveState();
+                Log($"已从列表移除 {item.File}（文件保留）", MessageLevel.Ok);
+                RefreshHistory();
+            }
+        }, "移除历史项");
+    }
+
+    /// <summary>删除一条提示词历史（用户需求 #11）。</summary>
+    [RelayCommand]
+    private void DeletePromptHistory(string prompt)
+    {
+        Safe(() =>
+        {
+            _sess.RemovePromptHistory(prompt);
+            RefreshPromptHistory();
+            Log("已删除该提示词记录", MessageLevel.Ok);
+        }, "删除提示词历史");
+    }
+
     private void UndoCore()
     {
         if (_sess.Items.Count == 0) { Log("没有可撤回的图", MessageLevel.Warn); return; }
@@ -773,6 +840,21 @@ public partial class MainViewModel : ObservableObject
     }
 
     // ================================================================ 润色
+    /// <summary>清空提示词与当前标注（用户需求 #13）。</summary>
+    public void ClearPrompt()
+    {
+        Safe(() =>
+        {
+            Prompt = "";
+            RegionCount = 0;
+            AnnotatedPath = "";
+            AnnotatedMaskPath = "";
+            BatchResults.Clear();
+            OnPropertyChanged(nameof(HasBatchResults));
+            Log("已清空提示词与标注", MessageLevel.Info);
+        }, "清空");
+    }
+
     [RelayCommand]
     private async Task PolishPromptAsync()
     {

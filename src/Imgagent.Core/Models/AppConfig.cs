@@ -19,6 +19,10 @@ public sealed class AppConfig
     /// <summary>默认 auto（对所有 provider/模型都合法，且实测恒落 low 档价格）。</summary>
     public string Quality { get; set; } = "auto";
 
+    /// <summary>是否显示按钮图标（用户需求 #7：可在设置里开关）。</summary>
+    [JsonPropertyName("use_icons")]
+    public bool UseIcons { get; set; } = true;
+
     [JsonPropertyName("aspect")]
     public string Aspect { get; set; } = "1:1";
 

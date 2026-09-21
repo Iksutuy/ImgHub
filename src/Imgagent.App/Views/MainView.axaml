@@ -110,8 +110,9 @@
                         IsEnabled="{Binding CanRun}"/>
                 <Button Content="编辑" Command="{Binding EditCommand}"
                         IsEnabled="{Binding CanRun}"/>
-                <Button Content="润色提示词" Command="{Binding PolishPromptCommand}"/>
-                <Button Content="导入" Click="OnImportClick"/>
+                <Button Content="润色" Command="{Binding PolishPromptCommand}"/>
+                <Button Content="清空" Click="OnClearPromptClick"
+                        ToolTip.Tip="清空提示词与当前标注"/>
               </StackPanel>
               <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,4,0,0">
                 <TextBlock Grid.Column="0" Text="参考图（编辑时附带）" Classes="section"
@@ -149,7 +150,15 @@
                 <ListBox.ItemTemplate>
                   <DataTemplate>
                     <TextBlock Text="{Binding}" FontSize="12" Margin="0,1"
-                               TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding}"/>
+                               TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding}">
+                      <TextBlock.ContextMenu>
+                        <ContextMenu>
+                          <MenuItem Header="删除该条记录"
+                                    Command="{Binding $parent[ListBox].DataContext.DeletePromptHistoryCommand}"
+                                    CommandParameter="{Binding}"/>
+                        </ContextMenu>
+                      </TextBlock.ContextMenu>
+                    </TextBlock>
                   </DataTemplate>
                 </ListBox.ItemTemplate>
               </ListBox>
@@ -251,6 +260,18 @@
                     <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="12"
                                Foreground="{DynamicResource AppCostBrush}"
                                Text="{Binding Cost, StringFormat='${0:0.0000}'}"/>
+                    <StackPanel Grid.Column="0" Grid.ColumnSpan="3" Background="Transparent">
+                      <StackPanel.ContextMenu>
+                        <ContextMenu>
+                          <MenuItem Header="删除（含文件）"
+                                    Command="{Binding $parent[ListBox].DataContext.DeleteHistoryItemCommand}"
+                                    CommandParameter="{Binding}"/>
+                          <MenuItem Header="仅从列表移除（保留文件）"
+                                    Command="{Binding $parent[ListBox].DataContext.DeleteListItemCommand}"
+                                    CommandParameter="{Binding}"/>
+                        </ContextMenu>
+                      </StackPanel.ContextMenu>
+                    </StackPanel>
                   </Grid>
                 </DataTemplate>
               </ListBox.ItemTemplate>
@@ -348,7 +369,7 @@
                       IsEnabled="{Binding CanRun}"/>
               <Button Content="润色" Command="{Binding PolishPromptCommand}"/>
               <Button Content="撤回" Command="{Binding UndoCommand}"/>
-              <Button Content="导入" Click="OnImportClick"/>
+              <Button Content="清空" Click="OnClearPromptClick"/>
             </StackPanel>
           </StackPanel>
         </Border>
@@ -457,7 +478,8 @@
       </StackPanel>
     </ScrollViewer>
 
-    <Border Grid.Row="2" Classes="card" Padding="10,8">
+    <!-- 底栏暂隐藏（用户需求 #8）：结构保留，待后续新功能按需启用 -->
+    <Border Grid.Row="2" Classes="card" Padding="10,8" IsVisible="False">
       <Grid ColumnDefinitions="*,Auto">
         <Border Grid.Column="0" Background="{DynamicResource AppAccentSoftBrush}"
                 CornerRadius="8" Padding="10,6" Margin="0,0,10,0" IsVisible="{Binding NeedsSetup}">
@@ -468,7 +490,7 @@
           <Button Content="撤回" Classes="toolbar" Command="{Binding UndoCommand}"/>
           <Button Content="预览" Classes="toolbar" Command="{Binding PreviewCurrentCommand}"/>
           <Button Content="保存到相册" Classes="toolbar" Command="{Binding SaveToGalleryCommand}"/>
-          <Button Content="润色提示词" Classes="toolbar" Command="{Binding PolishPromptCommand}"/>
+          <Button Content="润色" Classes="toolbar" Command="{Binding PolishPromptCommand}"/>
           <Button Content="快捷键" Classes="toolbar" Command="{Binding ShowShortcutsCommand}"/>
           <Button Content="数据目录" Classes="toolbar" Command="{Binding ShowDataDirCommand}"/>
         </StackPanel>

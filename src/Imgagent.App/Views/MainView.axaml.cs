@@ -173,6 +173,10 @@ public partial class MainView : UserControl
         }
     }
 
+    /// <summary>清空提示词与当前标注（用户需求 #13）。</summary>
+    private void OnClearPromptClick(object? sender, RoutedEventArgs e)
+        => Vm?.ClearPrompt();
+
     private void OnToggleRegionClick(object? sender, RoutedEventArgs e)
     {
         Vm?.ToggleRegionModeCommand.Execute(null);

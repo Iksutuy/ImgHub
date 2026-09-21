@@ -365,6 +365,36 @@ public sealed class Session
         return outList;
     }
 
+    /// <summary>
+    /// 删除一条提示词历史（用户需求 #11/#12）。重写整个文件，保持可读可编辑。
+    /// </summary>
+    public void RemovePromptHistory(string prompt)
+    {
+        try
+        {
+            if (!File.Exists(PromptHistoryFile)) return;
+            var keep = new List<string>();
+            foreach (var line in File.ReadAllLines(PromptHistoryFile))
+            {
+                var keepLine = true;
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(line);
+                    if (doc.RootElement.TryGetProperty("prompt", out var pEl) &&
+                        string.Equals(pEl.GetString(), prompt, StringComparison.Ordinal))
+                        keepLine = false;
+                }
+                catch { /* 非 JSON 行保留 */ }
+                if (keepLine) keep.Add(line);
+            }
+            File.WriteAllLines(PromptHistoryFile, keep);
+        }
+        catch { /* 删除失败不阻断 */ }
+    }
+
+    /// <summary>从当前历史列表移除一项（不删磁盘文件；语义 = 从列表移除）。</summary>
+    public bool RemoveItem(Item item) => Items.Remove(item);
+
     public void TrimPromptHistory(int maxLines = Catalog.PromptHistoryMax * 2)
     {
         try

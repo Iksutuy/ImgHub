@@ -34,8 +34,8 @@ public class SessionAndPolishTests : IDisposable
         s.Config.Model = "openai/gpt-image-2.5-flare";
         s.Config.Quality = "xhigh";
         s.Sanitize();
-        // xhigh 在 OpenRouter 下非法 → 必须被降到 low
-        Assert.Equal("low", s.Config.Quality);
+        // xhigh 在 OpenRouter 下非法 → 必须回退到 auto（auto 恒合法，永不 400）
+        Assert.Equal("auto", s.Config.Quality);
     }
 
     [Fact]
