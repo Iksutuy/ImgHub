@@ -64,6 +64,9 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _status = "就绪";
     [ObservableProperty] private double _totalCost;
     [ObservableProperty] private double _providerCost;
+
+    /// <summary>无 provider 标记的旧数据累计（>0 时 UI 提示"未归类"）。</summary>
+    [ObservableProperty] private double _unknownCost;
     [ObservableProperty] private Bitmap? _previewImage;
     [ObservableProperty] private string? _previewPath;
     [ObservableProperty] private string _estimatedCostText = "";
@@ -385,9 +388,10 @@ public partial class MainViewModel : ObservableObject
             _sess.Push(item); _sess.Log(item); done++;
             Log($"已保存 {item.File}", MessageLevel.Ok);
         }
-        _sess.TotalCost += res.Cost;
+        // TotalCost 是计算属性（从 Items 求和），此处无需手动累加
         TotalCost = _sess.TotalCost;
         ProviderCost = _sess.CostForProvider(_provider);
+        UnknownCost = _sess.CostForUnknownProvider();
         _sess.SaveState();
         if (done > 0)
         {
@@ -474,8 +478,9 @@ public partial class MainViewModel : ObservableObject
         if (_sess.Items.Count == 0) { Log("没有可撤回的图", MessageLevel.Warn); return; }
         var removed = _sess.Items[0];
         _sess.Items.RemoveAt(0);
-        _sess.TotalCost = Math.Max(0, _sess.TotalCost - removed.Cost);
+        // TotalCost 从 Items 求和，移除 item 后自动变小，无需手动扣减
         TotalCost = _sess.TotalCost;
+        ProviderCost = _sess.CostForProvider(_provider);
         _sess.SaveState();
         Log($"已撤回 {removed.File}", MessageLevel.Ok);
         RefreshHistory();
@@ -546,9 +551,9 @@ public partial class MainViewModel : ObservableObject
         History.Clear();
         for (int i = 0; i < _sess.Items.Count; i++)
             History.Add(new HistoryRow(_sess.Items[i], _sess.HomePath));
-        _sess.ReconcileCost();                       // 校正与 Items 的一致性
-        TotalCost = _sess.TotalCost;
-        ProviderCost = _sess.CostForProvider(_provider);
+        TotalCost = _sess.TotalCost;                          // = Items 求和
+        ProviderCost = _sess.CostForProvider(_provider);      // 同源，天然一致
+        UnknownCost = _sess.CostForUnknownProvider();
     }
 
     [RelayCommand]

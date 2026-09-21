@@ -440,13 +440,18 @@ public class WorkbenchFlowTests : IDisposable
     public async Task TotalCost_SurvivesRestart()
     {
         // 回归：LoadState 原实现漏读 total_cost → 重启后累计显示归零（真机 bug）
+        // 注意：TotalCost 现在是**计算属性**（从 Items 求和），
+        //       所以持久化的关键是 **Items 的 Cost 字段**能被正确恢复。
         _vm.Prompt = "费用持久化测试";
         await _vm.GenerateCommand.ExecuteAsync(null);
-        _svc.Session.TotalCost = 1.234567;
-        _svc.Session.SaveState();
+
+        var expect = _vm.TotalCost;
+        Assert.True(expect > 0 || _vm.Offline);   // 离线时为 0 也可接受
 
         var reloaded = new Session(_home);
-        Assert.Equal(1.234567, reloaded.TotalCost, 6);
+        // Items 恢复后，TotalCost 应自动等于求和
+        Assert.Equal(reloaded.Items.Sum(i => i.Cost), reloaded.TotalCost, 6);
+        Assert.Equal(expect, reloaded.TotalCost, 6);
     }
 
     [Fact]
@@ -798,6 +803,63 @@ public class WorkbenchFlowTests : IDisposable
         var e2 = Record.Exception(() => _vm.RefreshPromptHistoryCommand.Execute(null));
         Assert.Null(e1);
         Assert.Null(e2);
+    }
+
+    // ================================================================ 第七轮：累计口径
+
+    [Fact]
+    public void TotalCost_EqualsItemsSum_Always()
+    {
+        // 回归：提供商累计与总累计不匹配（口径不一致）
+        _svc.Session.Items.Clear();
+        _svc.Session.Items.Add(new Item { File = "a.png", Prompt = "p", Cost = 0.111,
+                                          Provider = "openrouter" });
+        _svc.Session.Items.Add(new Item { File = "b.png", Prompt = "p", Cost = 0.222,
+                                          Provider = "apimart" });
+        _svc.Session.Items.Add(new Item { File = "c.png", Prompt = "p", Cost = 0.333,
+                                          Provider = "openrouter" });
+
+        Assert.Equal(0.666, _svc.Session.TotalCost, 6);           // 总和
+        Assert.Equal(0.444, _svc.Session.CostForProvider(ApiProvider.OpenRouter), 6);
+        Assert.Equal(0.222, _svc.Session.CostForProvider(ApiProvider.Apimart), 6);
+
+        // 关键不变量：分组之和 == 总和（无 unknown 时）
+        var byProv = _svc.Session.CostByProvider();
+        Assert.Equal(_svc.Session.TotalCost, byProv.Values.Sum(), 6);
+    }
+
+    [Fact]
+    public void TotalCost_UnknownProvider_DoesNotDrift()
+    {
+        // 回归：旧数据（无 provider 字段）曾被按"当前 provider"计入 → 切 provider 时漂移
+        _svc.Session.Items.Clear();
+        _svc.Session.Items.Add(new Item { File = "old.png", Prompt = "legacy", Cost = 0.5 });
+        // Provider 字段为空
+
+        // 无论当前 provider 是哪个，"该 provider 的累计"都应为 0（不漂移）
+        Assert.Equal(0.0, _svc.Session.CostForProvider(ApiProvider.OpenRouter), 6);
+        Assert.Equal(0.0, _svc.Session.CostForProvider(ApiProvider.Apimart), 6);
+        // 但总累计与 unknown 组要能看到它
+        Assert.Equal(0.5, _svc.Session.TotalCost, 6);
+        Assert.Equal(0.5, _svc.Session.CostForUnknownProvider(), 6);
+
+        var byProv = _svc.Session.CostByProvider();
+        Assert.True(byProv.ContainsKey(Imgagent.Core.Storage.Session.UnknownProvider));
+        // 不变量：所有分组之和 == 总和
+        Assert.Equal(_svc.Session.TotalCost, byProv.Values.Sum(), 6);
+    }
+
+    [Fact]
+    public async Task TotalCost_ConsistentAfterGenerateAndUndo()
+    {
+        // 端到端：生成 → 撤回，两次累计都应等于 Items 求和
+        _vm.Prompt = "一致性";
+        await _vm.GenerateCommand.ExecuteAsync(null);
+        Assert.Equal(_svc.Session.Items.Sum(i => i.Cost), _vm.TotalCost, 6);
+
+        _vm.UndoCommand.Execute(null);
+        Assert.Equal(_svc.Session.Items.Sum(i => i.Cost), _vm.TotalCost, 6);
+        Assert.Equal(_vm.TotalCost, _vm.ProviderCost + _vm.UnknownCost, 6);
     }
 
     [Fact]

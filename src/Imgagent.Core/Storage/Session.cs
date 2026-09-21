@@ -36,7 +36,26 @@ public sealed class Session
 
     public List<Item> Items { get; } = new();   // Items[0] = 当前
     public AppConfig Config { get; private set; } = new();
-    public double TotalCost { get; set; }
+    /// <summary>
+    /// 累计花费（USD）。**单一真源 = Items 求和**。
+    /// </summary>
+    /// <remarks>
+    /// 历史问题：曾单独累加 API 返回的 res.Cost，而 Items[].Cost 是均摊值
+    /// （res.Cost / N），两者天然不等 → 界面"总累计"与历史求和不一致。
+    /// 现在读取时一律从 Items 求和（setter 保留仅为兼容旧调用）。
+    /// </remarks>
+    private double _totalCostOverride;
+    public double TotalCost
+    {
+        get
+        {
+            if (Items.Count == 0) return _totalCostOverride;
+            double sum = 0;
+            foreach (var it in Items) sum += it.Cost;
+            return sum;
+        }
+        set => _totalCostOverride = value;
+    }
     public int Counter { get; set; }
 
     public Session(string homePath)
@@ -53,32 +72,55 @@ public sealed class Session
     /// 旧数据没有 provider 字段时按「当前 provider」计入，保证不丢账。
     /// </summary>
     /// <summary>
-    /// 校正 TotalCost 与 Items 的一致性。
-    /// 起因：Undo 减的是 item.Cost（均摊值），而 TotalCost 累加的是 API 返回的实际值，
-    /// 多次增减后可能偏差。以 Items 求和为准（若偏差 > 1e-6 则修正）。
+    /// 保留的空操作（兼容旧调用）。TotalCost 现在是**计算属性**（从 Items 求和），
+    /// 天然与历史一致，无需再"校正"。
     /// </summary>
     public void ReconcileCost()
     {
-        double sum = 0;
-        foreach (var it in Items) sum += it.Cost;
-        // 仅在明显不一致时修正（容忍浮点误差）
-        if (Math.Abs(sum - TotalCost) > 1e-6 && sum > 0)
-            TotalCost = sum;
-        else if (Items.Count == 0 && TotalCost < 1e-6)
-            TotalCost = 0;
+        // 无操作：口径已统一到 Items 求和
     }
 
+    /// <summary>按 provider 累计花费。**与 TotalCost 同源**（都是 Items 求和）。</summary>
+    /// <remarks>
+    /// 旧数据无 provider 字段时归入 <see cref="UnknownProvider"/> 组，
+    /// **不再**按"当前 provider"计入（否则切换 provider 时数字漂移）。
+    /// </remarks>
     public double CostForProvider(ApiProvider provider)
     {
         var key = provider.Key();
         double sum = 0;
         foreach (var it in Items)
         {
-            var ip = string.IsNullOrEmpty(it.Provider) ? key : it.Provider;
-            if (string.Equals(ip, key, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(it.Provider, key, StringComparison.OrdinalIgnoreCase))
                 sum += it.Cost;
         }
         return sum;
+    }
+
+    /// <summary>无 provider 标记的旧数据（金额计入此组）。</summary>
+    public const string UnknownProvider = "unknown";
+
+    /// <summary>无 provider 标记的旧数据累计（UI 可提示"未归类"）。</summary>
+    public double CostForUnknownProvider()
+    {
+        double sum = 0;
+        foreach (var it in Items)
+        {
+            if (string.IsNullOrEmpty(it.Provider)) sum += it.Cost;
+        }
+        return sum;
+    }
+
+    /// <summary>按 provider 分组统计（provider -> 金额）。</summary>
+    public Dictionary<string, double> CostByProvider()
+    {
+        var map = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        foreach (var it in Items)
+        {
+            var key = string.IsNullOrEmpty(it.Provider) ? UnknownProvider : it.Provider;
+            map[key] = map.GetValueOrDefault(key) + it.Cost;
+        }
+        return map;
     }
     public ApiProvider Provider =>
         ApiProviderExtensions.Parse(Config.Provider) ?? ApiProvider.OpenRouter;
