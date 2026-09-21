@@ -29,6 +29,7 @@ public partial class App : Application
             Polish = new PolishService(http),
             Storage = new PlatformStorage(),
             Platform = new PlatformInfo(),
+            ModelStats = new ModelStatsService(home),
         };
         services.Polish.SwitchOn = session.Config.PolishEnabled;
         services.Polish.BaseUrl = session.Config.PolishBaseUrl;

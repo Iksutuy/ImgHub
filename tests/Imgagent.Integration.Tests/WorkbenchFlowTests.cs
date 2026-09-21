@@ -56,6 +56,7 @@ public class WorkbenchFlowTests : IDisposable
             Polish = new PolishService(new HttpJsonClient()),
             Storage = new FakeStorage(),
             Platform = new FakePlatform(),
+            ModelStats = new Imgagent.Core.Services.ModelStatsService(_home),
         };
         _vm = new MainViewModel(_svc);
         _vm.Offline = true;
@@ -386,6 +387,7 @@ public class WorkbenchFlowTests : IDisposable
                 Polish = new PolishService(new HttpJsonClient()),
                 Storage = new FakeStorage(),
                 Platform = new FakePlatform(),
+                ModelStats = new Imgagent.Core.Services.ModelStatsService(_home),
             };
             var vm = new MainViewModel(svc);
             Assert.False(vm.IsConfigured);
@@ -474,6 +476,7 @@ public class WorkbenchFlowTests : IDisposable
             Polish = new PolishService(new HttpJsonClient()),
             Storage = new FakeStorage(),
             Platform = new FakePlatform(),
+            ModelStats = new Imgagent.Core.Services.ModelStatsService(_home),
         };
         var vm = new MainViewModel(svc);
         Assert.False(string.IsNullOrWhiteSpace(vm.Model));
@@ -862,14 +865,97 @@ public class WorkbenchFlowTests : IDisposable
         Assert.Equal(_vm.TotalCost, _vm.ProviderCost + _vm.UnknownCost, 6);
     }
 
+    // ================================================================ 第七轮：模型统计
+
+    [Fact]
+    public void ModelStats_UnusedModel_ReturnsNull()
+    {
+        // 用户需求 #10：没用过的模型不显示预估（避免误导）
+        Assert.Null(_svc.ModelStats.GetAvgCost("openrouter", "never-used-model"));
+        Assert.False(_svc.ModelStats.HasStats("openrouter", "never-used-model"));
+    }
+
+    [Fact]
+    public void ModelStats_UsedModel_AverageCost()
+    {
+        // 用过 → 按平均花费预估
+        _svc.ModelStats.Record("openrouter", "model-x", cost: 0.10, images: 1);
+        _svc.ModelStats.Record("openrouter", "model-x", cost: 0.20, images: 1);
+        _svc.ModelStats.Record("openrouter", "model-x", cost: 0.30, images: 1);
+
+        var avg = _svc.ModelStats.GetAvgCost("openrouter", "model-x");
+        Assert.NotNull(avg);
+        Assert.Equal(0.20, avg!.Value, 6);   // (0.1+0.2+0.3)/3 = 0.2
+
+        // 与其它模型隔离
+        Assert.Null(_svc.ModelStats.GetAvgCost("openrouter", "model-y"));
+        Assert.Null(_svc.ModelStats.GetAvgCost("apimart", "model-x"));
+    }
+
+    [Fact]
+    public void ModelStats_PersistsAsReadableJson()
+    {
+        // 数据保存为可读 JSON（可手动编辑/删除）
+        _svc.ModelStats.Record("apimart", "seedream-5-0-pro", cost: 0.05, images: 1);
+
+        var f = Path.Combine(_home, "model_stats.json");
+        Assert.True(File.Exists(f));
+        var text = File.ReadAllText(f);
+        // 可读：含字段名与模型名（非二进制/混淆）
+        Assert.Contains("seedream", text);
+        Assert.Contains("total_cost", text);
+
+        // 重新加载（新实例）能读到
+        var svc2 = new Imgagent.Core.Services.ModelStatsService(_home);
+        var avg = svc2.GetAvgCost("apimart", "seedream-5-0-pro");
+        Assert.NotNull(avg);
+        Assert.Equal(0.05, avg!.Value, 6);
+
+        // 清空
+        svc2.Clear();
+        Assert.Null(svc2.GetAvgCost("apimart", "seedream-5-0-pro"));
+    }
+
+    [Fact]
+    public async Task Estimate_ShowsAvgAfterFirstUse()
+    {
+        // 端到端：用过模型后，预估文本应显示历史平均
+        _vm.Prompt = "统计测试";
+        _vm.BatchN = 1;
+        await _vm.GenerateCommand.ExecuteAsync(null);   // 离线生成（cost=0）
+
+        // 离线 cost=0 → 平均 0 → 但"用过"了，应显示预估（非"暂无记录"）
+        var model = _vm.Model;
+        Assert.True(_svc.ModelStats.HasStats(Imgagent.Core.Models.ApiProvider.OpenRouter.Key(), model));
+    }
+
     [Fact]
     public void Estimate_ReactsToChanges()
     {
+        // 用户需求 #10：预估按「provider+模型」历史统计
+        //   · 没用过 → 显示"暂无历史记录"（不显示数字，避免误导）
+        //   · 用过   → 按平均花费 × 批量数
         _vm.Quality = "low";
         _vm.Resolution = "1k";
-        _vm.BatchN = 1;
+
+        // 当前模型在测试里没用过 → 应提示"暂无记录"
+        Assert.Contains("暂无", _vm.EstimatedCostText);
+
+        // 记录一次花费后 → 应显示预估数字
+        _svc.ModelStats.Record(_vm.Provider.Key(), _vm.Model, cost: 0.02, images: 1);
+        // 手动触发重算（改属性触发 OnQualityChanged）
+        _vm.Quality = "medium";
+        Assert.Contains("预估", _vm.EstimatedCostText);
+        Assert.DoesNotContain("暂无", _vm.EstimatedCostText);
+
+        // 批量变化 → 预估随之变化
         var one = _vm.EstimatedCostText;
-        _vm.BatchN = 4;
-        Assert.NotEqual(one, _vm.EstimatedCostText);
+        _vm.BatchN = 3;
+        var three = _vm.EstimatedCostText;
+        Assert.NotEqual(one, three);
+
+        // 换个没用过的模型 → 又回到"暂无记录"
+        _vm.Model = Catalog.ModelChoices(_vm.Provider).First(m => m != _vm.Model);
+        Assert.Contains("暂无", _vm.EstimatedCostText);
     }
 }

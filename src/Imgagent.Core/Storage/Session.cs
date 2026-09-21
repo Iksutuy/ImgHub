@@ -207,7 +207,7 @@ public sealed class Session
     {
         // JSON 允许显式 null（例如 model:null），先归一化，防止启动闪退。
         Config.Model ??= "";
-        Config.Quality ??= "low";
+        Config.Quality ??= "auto";
         Config.Aspect ??= "1:1";
         Config.Resolution ??= "1k";
         Config.OutputFormat ??= "png";
@@ -217,11 +217,11 @@ public sealed class Session
 
         var p = Provider;
         if (!Catalog.QualitySupported(p, Config.Quality, Config.Model))
-            Config.Quality = "low";
+            Config.Quality = "auto";
         if (!Catalog.ModelMatchesProvider(Config.Model, p))
             Config.Model = Catalog.DefaultModel(p);
         if (!Catalog.QualitySupported(p, Config.Quality, Config.Model))
-            Config.Quality = "low";
+            Config.Quality = "auto";
         if (!Catalog.Resolutions.Contains(Config.Resolution)) Config.Resolution = "1k";
         if (!Catalog.OutputFormats.Contains(Config.OutputFormat)) Config.OutputFormat = "png";
         if (Config.BatchN is < 1 or > 4) Config.BatchN = 1;

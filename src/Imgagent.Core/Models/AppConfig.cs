@@ -16,7 +16,8 @@ public sealed class AppConfig
     public string Model { get; set; } = "";
 
     [JsonPropertyName("quality")]
-    public string Quality { get; set; } = "low";
+    /// <summary>默认 auto（对所有 provider/模型都合法，且实测恒落 low 档价格）。</summary>
+    public string Quality { get; set; } = "auto";
 
     [JsonPropertyName("aspect")]
     public string Aspect { get; set; } = "1:1";

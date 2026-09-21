@@ -27,6 +27,9 @@ public sealed class AppServices
     public required Core.Services.IPolishService Polish { get; init; }
     public required IPlatformStorage Storage { get; init; }
     public required IPlatformInfo Platform { get; init; }
+
+    /// <summary>模型花费统计（价格预估用，持久化 model_stats.json）。</summary>
+    public required Core.Services.ModelStatsService ModelStats { get; init; }
 }
 
 /// <summary>数据目录解析：各平台给标准位置。</summary>

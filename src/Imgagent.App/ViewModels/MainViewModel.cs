@@ -243,6 +243,7 @@ public partial class MainViewModel : ObservableObject
             Log($"模型不支持 {old}，质量已回退 low", MessageLevel.Warn);
         }
         RebuildQualityOptions();
+        UpdateEstimate();     // 模型变了 → 预估按新模型统计重算（可能变'暂无'）
         PersistConfig();
     }
     partial void OnToolIndexChanged(int value) => OnPropertyChanged(nameof(CanvasTool));
@@ -291,10 +292,32 @@ public partial class MainViewModel : ObservableObject
         try { _sess.SaveConfig(); } catch { }
     }
 
+    /// <summary>
+    /// 价格预估（#10）：
+    ///   · 该 provider+模型 **用过** → 按**历史平均单次花费** × 批量数；
+    ///   · **没用过** → 不显示预估（避免按错表误导）。
+    /// </summary>
     private void UpdateEstimate()
     {
-        var (cost, _) = Catalog.EstimateDetail(_quality, _resolution, _batchN);
-        EstimatedCostText = $"预估 ≈ ${cost:0.0000}（{_batchN} 张 · {_quality} · {_resolution}）";
+        var model = Model ?? "";
+        var provider = Provider.Key();
+
+        if (string.IsNullOrWhiteSpace(model))
+        {
+            EstimatedCostText = "";
+            return;
+        }
+
+        var avg = _svc.ModelStats.GetAvgCost(provider, model);
+        if (avg is null)
+        {
+            // 没用过该模型 → 不显示（避免误导）
+            EstimatedCostText = "该模型暂无历史花费记录，生成一次后显示预估";
+            return;
+        }
+
+        var cost = avg.Value * Math.Max(1, BatchN);
+        EstimatedCostText = $"预估 ≈ ${cost:0.0000}（{_batchN} 张 · {model} · 历史平均 ${avg:0.0000}/次）";
     }
 
     // ================================================================ 生成
@@ -397,6 +420,12 @@ public partial class MainViewModel : ObservableObject
         {
             var secs = (DateTime.UtcNow - t0).TotalSeconds;
             var costText = Offline ? "" : $"，花费 ${res.Cost:0.0000}";
+            // #10 记录该模型的历史花费（供价格预估）
+            try
+            {
+                _svc.ModelStats.Record(Provider.Key(), _model, res.Cost, res.Images.Count);
+            }
+            catch { /* 统计失败不影响主流程 */ }
             Log($"完成 {done} 张，用时 {secs:0.0}s{costText}", MessageLevel.Ok);
             RefreshHistory();
             var batch = _sess.Items.Take(done).Reverse().ToList();
