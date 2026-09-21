@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Imgagent.Core/Imgagent.Core.csproj" />
+    <Project Path="src/Imgagent.App/Imgagent.App.csproj" />
+    <Project Path="src/Imgagent.Desktop/Imgagent.Desktop.csproj" />
+    <Project Path="src/Imgagent.Android/Imgagent.Android.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Imgagent.Core.Tests/Imgagent.Core.Tests.csproj" />
+    <Project Path="tests/Imgagent.Integration.Tests/Imgagent.Integration.Tests.csproj" />
+  </Folder>
+</Solution>

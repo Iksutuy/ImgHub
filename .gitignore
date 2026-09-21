@@ -1,0 +1,62 @@
+# ============================================================ .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.nupkg
+
+# 发布产物（走 GitHub Releases 分发，不入库）
+release/
+publish/
+*.apk
+*.aab
+*.zip
+*.rar
+*.7z
+
+# ============================================================ 构建中间产物
+# Native AOT / 裁剪
+*.pdb
+*.ilk
+*.exp
+*.lib
+# Android
+*.keystore
+*.jks
+# 生成的 ico（由 make-icon.ps1 从 PNG 生成）
+src/Imgagent.Desktop/app.ico
+
+# ============================================================ 运行时数据（绝不入库）
+# 可能被误提交的用户数据目录
+imgagent_data/
+.imgagent_key
+.imgagent_apimart_key
+.imgagent_polish_key
+config.json
+state.json
+history.jsonl
+prompt_history.jsonl
+
+# ============================================================ IDE / 编辑器
+.idea/
+.vscode/
+*.swp
+*~
+
+# ============================================================ OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ============================================================ 临时/调试文件
+# 开发期的截图与脚本（下划线前缀惯例）
+_*.png
+_*.txt
+_*.ps1
+_*.py
+!make-icon.ps1
+
+# ============================================================ 会话工具残留
+.reasonix/
+.tmp*/

@@ -1,0 +1,560 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Imgagent.App.ViewModels"
+             xmlns:ctrl="using:Imgagent.App.Controls"
+             x:Class="Imgagent.App.Views.MainView"
+             x:DataType="vm:MainViewModel"
+             Background="{DynamicResource AppBgBrush}">
+  <Grid RowDefinitions="Auto,*,Auto" Margin="12">
+    <Border Grid.Row="0" Classes="card" Padding="14,10">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12">
+          <TextBlock Text="imgagent 工作台" FontSize="16" FontWeight="SemiBold"
+                     Foreground="{DynamicResource AppAccentBrush}" VerticalAlignment="Center"/>
+          <Border Background="{DynamicResource AppAccentSoftBrush}" CornerRadius="10"
+                  Padding="8,2" VerticalAlignment="Center" IsVisible="{Binding IsConfigured}">
+            <TextBlock Text="{Binding Status}" FontSize="12"
+                       Foreground="{DynamicResource AppAccentBrush}"/>
+          </Border>
+          <TextBlock Text="{Binding Model}" FontSize="12" VerticalAlignment="Center"
+                     IsVisible="{Binding IsWideLayout}"
+                     Foreground="{DynamicResource AppTextSubBrush}"/>
+        </StackPanel>
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
+          <ProgressBar IsIndeterminate="True" Width="56" Height="5"
+                       IsVisible="{Binding Busy}" VerticalAlignment="Center"/>
+          <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center"
+                      IsVisible="{Binding IsWideLayout}"
+                      ToolTip.Tip="当前 provider 的累计花费">
+            <TextBlock Text="{Binding ProviderLabel}" FontWeight="SemiBold"
+                       Foreground="{DynamicResource AppCostBrush}"/>
+            <TextBlock Text="累计" Foreground="{DynamicResource AppTextDimBrush}"/>
+            <TextBlock Text="{Binding ProviderCost, StringFormat='${0:0.0000}'}"
+                       FontWeight="SemiBold" Foreground="{DynamicResource AppCostBrush}"/>
+          </StackPanel>
+          <ComboBox Width="132" MinHeight="32" VerticalAlignment="Center"
+                    ItemsSource="{Binding Providers}"
+                    SelectedItem="{Binding SelectedProvider, Mode=TwoWay}"/>
+          <ToggleButton Content="深色" IsChecked="{Binding DarkTheme}"
+                        Classes="toolbar" VerticalAlignment="Center"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!--
+      响应式主体：
+        · 宽屏（IsWideLayout=true）→ 三栏并排（参数 | 预览 | 历史）
+        · 窄屏（手机竖屏）        → 两行堆叠：第一行[预览|历史]，第二行[参数]
+      用 IsVisible 切换两套容器（Avalonia 的 Grid 定义不便直接绑定）。
+    -->
+    <Grid Grid.Row="1" Margin="0,12,0,12"
+          IsVisible="{Binding IsWideLayout}"
+          ColumnDefinitions="1.02*,1.18*,1*">
+      <Border Grid.Column="0" Classes="card" Padding="14,14,4,14" Margin="0,0,10,0">
+        <Grid ColumnDefinitions="*,14">
+          <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Spacing="10" Margin="0,0,6,0">
+              <TextBlock Text="生成参数" Classes="section"/>
+              <Grid ColumnDefinitions="64,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="模型" FontSize="13"
+                           VerticalAlignment="Center" Margin="0,0,8,8"
+                           Foreground="{DynamicResource AppTextSubBrush}"/>
+                <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding ModelChoices}"
+                          SelectedItem="{Binding Model}" HorizontalAlignment="Stretch"
+                          MinHeight="32" Margin="0,0,0,8" PlaceholderText="自动选择默认模型"/>
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="质量" FontSize="13"
+                           VerticalAlignment="Center" Margin="0,0,8,8"
+                           Foreground="{DynamicResource AppTextSubBrush}"/>
+                <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding QualityOptions}"
+                          SelectedItem="{Binding Quality}" HorizontalAlignment="Stretch"
+                          MinHeight="32" Margin="0,0,0,8"/>
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="画幅" FontSize="13"
+                           VerticalAlignment="Center" Margin="0,0,8,8"
+                           Foreground="{DynamicResource AppTextSubBrush}"/>
+                <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding AspectOptions}"
+                          SelectedItem="{Binding Aspect}" HorizontalAlignment="Stretch"
+                          MinHeight="32" Margin="0,0,0,8"/>
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="分辨率" FontSize="13"
+                           VerticalAlignment="Center" Margin="0,0,8,8"
+                           Foreground="{DynamicResource AppTextSubBrush}"/>
+                <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding ResolutionOptions}"
+                          SelectedItem="{Binding Resolution}" HorizontalAlignment="Stretch"
+                          MinHeight="32" Margin="0,0,0,8"/>
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="格式" FontSize="13"
+                           VerticalAlignment="Center" Margin="0,0,8,0"
+                           Foreground="{DynamicResource AppTextSubBrush}"/>
+                <ComboBox Grid.Row="4" Grid.Column="1" ItemsSource="{Binding OutputFormatOptions}"
+                          SelectedItem="{Binding OutputFormat}" HorizontalAlignment="Stretch"
+                          MinHeight="32"/>
+              </Grid>
+              <Grid ColumnDefinitions="64,*" Margin="0,2,0,0">
+                <TextBlock Grid.Column="0" Text="批量" FontSize="13" VerticalAlignment="Center"
+                           Foreground="{DynamicResource AppTextSubBrush}"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                  <NumericUpDown Value="{Binding BatchN}" Minimum="1" Maximum="4"
+                                 Increment="1" Width="104" MinHeight="32"/>
+                  <CheckBox Content="离线" IsChecked="{Binding Offline}" VerticalAlignment="Center"/>
+                </StackPanel>
+              </Grid>
+              <Border Background="{DynamicResource AppSurfaceAltBrush}" CornerRadius="8" Padding="10,7">
+                <TextBlock Text="{Binding EstimatedCostText}" FontSize="12"
+                           Foreground="{DynamicResource AppCostBrush}"/>
+              </Border>
+              <TextBlock Text="提示词" Classes="section" Margin="0,4,0,0"/>
+              <TextBox Text="{Binding Prompt}" AcceptsReturn="True" Height="92"
+                       TextWrapping="Wrap" CornerRadius="8"
+                       PlaceholderText="一只猫在窗台上，逆光，胶片感"/>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="生成" Classes="accent" Command="{Binding GenerateCommand}"
+                        IsEnabled="{Binding CanRun}"/>
+                <Button Content="编辑" Command="{Binding EditCommand}"
+                        IsEnabled="{Binding CanRun}"/>
+                <Button Content="润色提示词" Command="{Binding PolishPromptCommand}"/>
+                <Button Content="导入" Click="OnImportClick"/>
+              </StackPanel>
+              <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                <TextBlock Grid.Column="0" Text="参考图（编辑时附带）" Classes="section"/>
+                <Button Grid.Column="1" Content="＋ 添加" Classes="toolbar" Padding="8,3"
+                        Click="OnAddRefImageClick"
+                        ToolTip.Tip="导入外部图片作为参考图（编辑时一并给模型）"/>
+              </Grid>
+              <ListBox ItemsSource="{Binding RefImages}" MaxHeight="84" CornerRadius="8"
+                       Background="{DynamicResource AppSurfaceAltBrush}" Padding="2">
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <Grid ColumnDefinitions="28,*,Auto" Margin="0,1">
+                      <Border Grid.Column="0" Width="24" Height="24" CornerRadius="4"
+                              Background="{DynamicResource AppSurfaceBrush}">
+                        <Image Source="{Binding Thumb}" Stretch="UniformToFill"/>
+                      </Border>
+                      <TextBlock Grid.Column="1" Text="{Binding ShortPrompt}" FontSize="11"
+                                 VerticalAlignment="Center" Margin="6,0,0,0"
+                                 TextTrimming="CharacterEllipsis"/>
+                      <Button Grid.Column="2" Content="✕" Classes="toolbar" Padding="4,2"
+                              Command="{Binding $parent[ListBox].DataContext.RemoveRefImageCommand}"
+                              CommandParameter="{Binding}"/>
+                    </Grid>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <TextBlock Text="提示词历史（悬停看全文）" Classes="section" Margin="0,4,0,0"/>
+              <ListBox ItemsSource="{Binding PromptHistory}" CornerRadius="8" MaxHeight="120"
+                       Padding="2" Background="{DynamicResource AppSurfaceAltBrush}"
+                       SelectionChanged="OnPromptHistorySelected">
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding}" FontSize="12" Margin="0,1"
+                               TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding}"/>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </StackPanel>
+          </ScrollViewer>
+        </Grid>
+      </Border>
+
+      <Border Grid.Column="1" Classes="card" Padding="14" Margin="0,0,10,0">
+        <Grid RowDefinitions="Auto,2*,Auto,Auto,Auto">
+          <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,8">
+            <TextBlock Grid.Column="0" Text="预览" Classes="section"/>
+            <TextBlock Grid.Column="1" Text="{Binding PreviewPath}" Classes="dim"
+                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="10,0,0,0"/>
+            <Button Grid.Column="2" Content="编辑图片" Classes="toolbar accent"
+                    IsEnabled="{Binding IsConfigured}" Click="OnToggleRegionClick"
+                    ToolTip.Tip="用画笔/马克笔圈画或涂色，标出要修改（红）或要保留（绿）的区域"/>
+          </Grid>
+          <Border Grid.Row="1" Background="{DynamicResource AppSurfaceAltBrush}" CornerRadius="8">
+            <Grid>
+              <Image Source="{Binding PreviewImage}" Stretch="Uniform" Margin="6"
+                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              <ctrl:RegionCanvas x:Name="RegionLayer" IsVisible="{Binding RegionMode}"
+                                 Tool="{Binding CanvasTool}" Intent="{Binding CanvasIntent}"
+                                 BrushColor="{Binding BrushColor}"
+                                 BrushSize="{Binding BrushSize}"
+                                 BaseImagePath="{Binding PreviewPath}"/>
+            </Grid>
+          </Border>
+          <ItemsControl Grid.Row="2" ItemsSource="{Binding BatchResults}" Margin="0,10,0,0"
+                        IsVisible="{Binding HasBatchResults}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Button Classes="toolbar" Margin="0,0,6,6" Padding="8,5" Click="OnThumbClick">
+                  <StackPanel Spacing="2">
+                    <TextBlock Text="{Binding ShortPrompt}" FontSize="11"/>
+                    <TextBlock Text="{Binding CostText}" FontSize="10"
+                               Foreground="{DynamicResource AppCostBrush}"/>
+                  </StackPanel>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0"
+                      IsVisible="{Binding RegionMode}">
+            <TextBlock Text="工具" Classes="dim" VerticalAlignment="Center"/>
+            <ComboBox ItemsSource="{Binding ToolNames}" SelectedIndex="{Binding ToolIndex}"
+                      Width="92" MinHeight="30"/>
+            <TextBlock Text="语义" Classes="dim" VerticalAlignment="Center"/>
+            <ComboBox ItemsSource="{Binding IntentNames}" SelectedIndex="{Binding IntentIndex}"
+                      Width="120" MinHeight="30"/>
+            <Button Content="调色板" Classes="toolbar" Command="{Binding OpenPaletteCommand}"
+                    ToolTip.Tip="打开调色板，自定义画笔/方框/圆圈的颜色"/>
+            <Button Content="清除" Classes="toolbar" Click="OnClearRegionsClick"/>
+            <Button Content="用标注编辑" Classes="toolbar accent" Click="OnAnnotatedEditClick"
+                    IsEnabled="{Binding CanRun}"/>
+          </StackPanel>
+          <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="8" Margin="0,10,0,0">
+            <Button Content="系统看图器" Command="{Binding OpenInViewerCommand}"/>
+            <Button Content="保存到相册" Command="{Binding SaveToGalleryCommand}"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <Grid Grid.Column="2" RowDefinitions="*,*">
+        <Border Grid.Row="0" Classes="card" Padding="14" Margin="0,0,0,6">
+          <Grid RowDefinitions="Auto,*,Auto">
+            <TextBlock Grid.Row="0" Text="历史 / 累计" Classes="section" Margin="0,0,0,8"/>
+            <ListBox Grid.Row="1" ItemsSource="{Binding History}" CornerRadius="8"
+                     SelectionChanged="OnHistorySelected">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <Grid ColumnDefinitions="46,*,Auto" Margin="0,2">
+                    <Border Grid.Column="0" Width="40" Height="40" CornerRadius="6" Margin="0,0,8,0"
+                            Background="{DynamicResource AppSurfaceAltBrush}">
+                      <Image Source="{Binding Thumb}" Stretch="UniformToFill"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Prompt}" FontSize="12.5"
+                                 TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Prompt}"/>
+                      <TextBlock Text="{Binding File}" Classes="dim" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                    <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="12"
+                               Foreground="{DynamicResource AppCostBrush}"
+                               Text="{Binding Cost, StringFormat='${0:0.0000}'}"/>
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <TextBlock Grid.Row="2" Margin="0,8,0,0" FontWeight="SemiBold" FontSize="13"
+                       Foreground="{DynamicResource AppOkBrush}"
+                       Text="{Binding TotalCost, StringFormat='总累计 ${0:0.0000}'}"
+                       ToolTip.Tip="全部 provider 的历史累计"/>
+          </Grid>
+        </Border>
+        <Border Grid.Row="1" Classes="card" Padding="14" Margin="0,6,0,0">
+          <Grid RowDefinitions="Auto,*">
+            <TextBlock Grid.Row="0" Text="消息" Classes="section" Margin="0,0,0,8"/>
+            <ScrollViewer Grid.Row="1" x:Name="MessageScroll">
+              <ItemsControl ItemsSource="{Binding Messages}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock TextWrapping="Wrap" FontSize="12.5" Margin="0,0,0,4">
+                      <Run Text="{Binding Time}" Foreground="{DynamicResource AppTextDimBrush}"/>
+                      <Run Text=" "/>
+                      <Run Text="{Binding Text}" Foreground="{DynamicResource AppTextBrush}"/>
+                    </TextBlock>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </Grid>
+        </Border>
+      </Grid>
+    </Grid>
+
+    <!-- ===== 窄屏布局（手机竖屏）：预览优先 → 操作 → 参数 ===== -->
+    <ScrollViewer Grid.Row="1" Margin="0,12,0,12" IsVisible="{Binding !IsWideLayout}">
+      <StackPanel Spacing="10">
+        <!-- ① 预览 + 编辑工具栏（最常用，放最上面） -->
+        <Border Classes="card" Padding="12">
+          <Grid RowDefinitions="Auto,320,Auto,Auto">
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,8">
+              <TextBlock Grid.Column="0" Text="预览" Classes="section"/>
+              <TextBlock Grid.Column="1" Text="{Binding PreviewPath}" Classes="dim"
+                         TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                         Margin="8,0,0,0"/>
+              <Button Grid.Column="2" Content="编辑图片" Classes="toolbar accent"
+                      IsEnabled="{Binding IsConfigured}" Click="OnToggleRegionClick"/>
+            </Grid>
+            <Border Grid.Row="1" Background="{DynamicResource AppSurfaceAltBrush}" CornerRadius="8">
+              <Grid>
+                <Image Source="{Binding PreviewImage}" Stretch="Uniform" Margin="4"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <ctrl:RegionCanvas x:Name="RegionLayerNarrow" IsVisible="{Binding RegionMode}"
+                                   Tool="{Binding CanvasTool}" Intent="{Binding CanvasIntent}"
+                                   BrushColor="{Binding BrushColor}"
+                                   BrushSize="{Binding BrushSize}"
+                                   BaseImagePath="{Binding PreviewPath}"/>
+              </Grid>
+            </Border>
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0"
+                        IsVisible="{Binding RegionMode}">
+              <ComboBox ItemsSource="{Binding ToolNames}" SelectedIndex="{Binding ToolIndex}"
+                        Width="88" MinHeight="30"/>
+              <ComboBox ItemsSource="{Binding IntentNames}" SelectedIndex="{Binding IntentIndex}"
+                        Width="116" MinHeight="30"/>
+              <Button Content="调色板" Classes="toolbar" Command="{Binding OpenPaletteCommand}"/>
+              <Button Content="清除" Classes="toolbar" Click="OnClearRegionsClick"/>
+              <Button Content="用标注编辑" Classes="toolbar accent" Click="OnAnnotatedEditClick"
+                      IsEnabled="{Binding CanRun}"/>
+            </StackPanel>
+            <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+              <Button Content="系统看图器" Classes="toolbar" Command="{Binding OpenInViewerCommand}"/>
+              <Button Content="保存到相册" Classes="toolbar" Command="{Binding SaveToGalleryCommand}"/>
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <!-- ② 主操作：生成 / 编辑 / 导入 / 撤回 -->
+        <Border Classes="card" Padding="12">
+          <StackPanel Spacing="8">
+            <TextBlock Text="提示词" Classes="section"/>
+            <TextBox Text="{Binding Prompt}" AcceptsReturn="True" Height="80"
+                     TextWrapping="Wrap" CornerRadius="8"
+                     PlaceholderText="一只猫在窗台上，逆光，胶片感"/>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Content="生成" Classes="accent" Command="{Binding GenerateCommand}"
+                      IsEnabled="{Binding CanRun}"/>
+              <Button Content="编辑" Command="{Binding EditCommand}"
+                      IsEnabled="{Binding CanRun}"/>
+              <Button Content="润色" Command="{Binding PolishPromptCommand}"/>
+              <Button Content="撤回" Command="{Binding UndoCommand}"/>
+              <Button Content="导入" Click="OnImportClick"/>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- ③ 生成参数（折叠在下方） -->
+        <Border Classes="card" Padding="12">
+          <StackPanel Spacing="10">
+            <TextBlock Text="生成参数" Classes="section"/>
+            <Grid ColumnDefinitions="64,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+              <TextBlock Grid.Row="0" Grid.Column="0" Text="模型" FontSize="13"
+                         VerticalAlignment="Center" Margin="0,0,8,8"
+                         Foreground="{DynamicResource AppTextSubBrush}"/>
+              <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding ModelChoices}"
+                        SelectedItem="{Binding Model}" HorizontalAlignment="Stretch"
+                        MinHeight="32" Margin="0,0,0,8"/>
+              <TextBlock Grid.Row="1" Grid.Column="0" Text="质量" FontSize="13"
+                         VerticalAlignment="Center" Margin="0,0,8,8"
+                         Foreground="{DynamicResource AppTextSubBrush}"/>
+              <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding QualityOptions}"
+                        SelectedItem="{Binding Quality}" HorizontalAlignment="Stretch"
+                        MinHeight="32" Margin="0,0,0,8"/>
+              <TextBlock Grid.Row="2" Grid.Column="0" Text="画幅" FontSize="13"
+                         VerticalAlignment="Center" Margin="0,0,8,8"
+                         Foreground="{DynamicResource AppTextSubBrush}"/>
+              <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding AspectOptions}"
+                        SelectedItem="{Binding Aspect}" HorizontalAlignment="Stretch"
+                        MinHeight="32" Margin="0,0,0,8"/>
+              <TextBlock Grid.Row="3" Grid.Column="0" Text="分辨率" FontSize="13"
+                         VerticalAlignment="Center" Margin="0,0,8,8"
+                         Foreground="{DynamicResource AppTextSubBrush}"/>
+              <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding ResolutionOptions}"
+                        SelectedItem="{Binding Resolution}" HorizontalAlignment="Stretch"
+                        MinHeight="32" Margin="0,0,0,8"/>
+              <TextBlock Grid.Row="4" Grid.Column="0" Text="格式" FontSize="13"
+                         VerticalAlignment="Center" Margin="0,0,8,0"
+                         Foreground="{DynamicResource AppTextSubBrush}"/>
+              <ComboBox Grid.Row="4" Grid.Column="1" ItemsSource="{Binding OutputFormatOptions}"
+                        SelectedItem="{Binding OutputFormat}" HorizontalAlignment="Stretch"
+                        MinHeight="32"/>
+            </Grid>
+            <Grid ColumnDefinitions="64,*">
+              <TextBlock Grid.Column="0" Text="批量" FontSize="13" VerticalAlignment="Center"
+                         Foreground="{DynamicResource AppTextSubBrush}"/>
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                <NumericUpDown Value="{Binding BatchN}" Minimum="1" Maximum="4"
+                               Increment="1" Width="104" MinHeight="32"/>
+                <CheckBox Content="离线" IsChecked="{Binding Offline}" VerticalAlignment="Center"/>
+              </StackPanel>
+            </Grid>
+            <Border Background="{DynamicResource AppSurfaceAltBrush}" CornerRadius="8" Padding="10,7">
+              <TextBlock Text="{Binding EstimatedCostText}" FontSize="12"
+                         Foreground="{DynamicResource AppCostBrush}"/>
+            </Border>
+          </StackPanel>
+        </Border>
+
+        <!-- ④ 历史 + 消息 -->
+        <Border Classes="card" Padding="12">
+          <Grid RowDefinitions="Auto,240,Auto">
+            <TextBlock Grid.Row="0" Text="历史 / 累计" Classes="section" Margin="0,0,0,8"/>
+            <ListBox Grid.Row="1" ItemsSource="{Binding History}" CornerRadius="8"
+                     SelectionChanged="OnHistorySelected">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <Grid ColumnDefinitions="46,*,Auto" Margin="0,2">
+                    <Border Grid.Column="0" Width="40" Height="40" CornerRadius="6" Margin="0,0,8,0"
+                            Background="{DynamicResource AppSurfaceAltBrush}">
+                      <Image Source="{Binding Thumb}" Stretch="UniformToFill"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Prompt}" FontSize="12.5"
+                                 TextTrimming="CharacterEllipsis"/>
+                      <TextBlock Text="{Binding File}" Classes="dim" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                    <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="12"
+                               Foreground="{DynamicResource AppCostBrush}"
+                               Text="{Binding Cost, StringFormat='${0:0.0000}'}"/>
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <TextBlock Grid.Row="2" Margin="0,8,0,0" FontWeight="SemiBold" FontSize="13"
+                       Foreground="{DynamicResource AppOkBrush}"
+                       Text="{Binding TotalCost, StringFormat='总累计 ${0:0.0000}'}"/>
+          </Grid>
+        </Border>
+
+        <Border Classes="card" Padding="12">
+          <Grid RowDefinitions="Auto,180">
+            <TextBlock Grid.Row="0" Text="消息" Classes="section" Margin="0,0,0,8"/>
+            <ScrollViewer Grid.Row="1">
+              <ItemsControl ItemsSource="{Binding Messages}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock TextWrapping="Wrap" FontSize="12.5" Margin="0,0,0,4">
+                      <Run Text="{Binding Time}" Foreground="{DynamicResource AppTextDimBrush}"/>
+                      <Run Text=" "/>
+                      <Run Text="{Binding Text}" Foreground="{DynamicResource AppTextBrush}"/>
+                    </TextBlock>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </Grid>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+
+    <Border Grid.Row="2" Classes="card" Padding="10,8">
+      <Grid ColumnDefinitions="*,Auto">
+        <Border Grid.Column="0" Background="{DynamicResource AppAccentSoftBrush}"
+                CornerRadius="8" Padding="10,6" Margin="0,0,10,0" IsVisible="{Binding NeedsSetup}">
+          <TextBlock Text="{Binding SetupHint}" FontSize="12.5" VerticalAlignment="Center"
+                     Foreground="{DynamicResource AppAccentBrush}"/>
+        </Border>
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" IsVisible="{Binding !NeedsSetup}">
+          <Button Content="撤回" Classes="toolbar" Command="{Binding UndoCommand}"/>
+          <Button Content="预览" Classes="toolbar" Command="{Binding PreviewCurrentCommand}"/>
+          <Button Content="保存到相册" Classes="toolbar" Command="{Binding SaveToGalleryCommand}"/>
+          <Button Content="润色提示词" Classes="toolbar" Command="{Binding PolishPromptCommand}"/>
+          <Button Content="快捷键" Classes="toolbar" Command="{Binding ShowShortcutsCommand}"/>
+          <Button Content="数据目录" Classes="toolbar" Command="{Binding ShowDataDirCommand}"/>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+          <Button Content="⚙ 设置" Classes="toolbar accent" Command="{Binding OpenSettingsCommand}"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Border Grid.Row="0" Grid.RowSpan="3" Background="#66000000" IsVisible="{Binding SettingsOpen}">
+      <Border Classes="card" Width="540" MaxHeight="640" HorizontalAlignment="Center"
+              VerticalAlignment="Center" Padding="20">
+        <Grid RowDefinitions="Auto,*,Auto">
+          <TextBlock Grid.Row="0" Text="设置" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,14"/>
+          <ScrollViewer Grid.Row="1">
+            <StackPanel Spacing="14">
+              <TextBlock Text="生图 API" Classes="section"/>
+              <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto,Auto">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Provider" FontSize="13"
+                           VerticalAlignment="Center" Foreground="{DynamicResource AppTextSubBrush}"/>
+                <ComboBox Grid.Row="0" Grid.Column="1" Width="220" MinHeight="32"
+                          HorizontalAlignment="Left" ItemsSource="{Binding Providers}"
+                          SelectedItem="{Binding SelectedProvider, Mode=TwoWay}"/>
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="API Key" FontSize="13"
+                           VerticalAlignment="Center" Margin="0,10,0,0"
+                           Foreground="{DynamicResource AppTextSubBrush}"/>
+                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="8" Margin="0,10,0,0">
+                  <TextBox Text="{Binding ApiKeyInput}" PasswordChar="•" Width="248"
+                           PlaceholderText="{Binding KeyHint}"/>
+                  <Button Content="校验" Classes="toolbar" Command="{Binding TestKeyCommand}"
+                          IsEnabled="{Binding !KeyChecking}"/>
+                </StackPanel>
+                <TextBlock Grid.Row="2" Grid.Column="1" Classes="dim" Margin="0,4,0,0"
+                           Text="{Binding KeyStatusText, StringFormat='当前：{0}'}"/>
+                <TextBlock Grid.Row="2" Grid.Column="1" Margin="0,26,0,0"
+                           Text="{Binding KeyCheckStatus}" TextWrapping="Wrap"
+                           Foreground="{DynamicResource AppWarnBrush}"/>
+              </Grid>
+              <Rectangle Height="1" Fill="{DynamicResource AppBorderBrush}"/>
+              <TextBlock Text="提示词润色（可选，需自配端点/模型/key）" Classes="section"/>
+              <StackPanel Spacing="8">
+                <TextBox Text="{Binding PolishBaseInput}"
+                         PlaceholderText="端点 base_url，如 https://api.openai.com/v1"/>
+                <TextBox Text="{Binding PolishModelInput}" PlaceholderText="模型名，如 gpt-4o-mini"/>
+                <TextBox Text="{Binding PolishKeyInput}" PasswordChar="•"
+                         PlaceholderText="润色 API key（留空不改）"/>
+              </StackPanel>
+              <Rectangle Height="1" Fill="{DynamicResource AppBorderBrush}"/>
+              <TextBlock Text="数据目录" Classes="section"/>
+              <TextBlock Text="{Binding HomePath}" Classes="dim mono" TextWrapping="Wrap"/>
+            </StackPanel>
+          </ScrollViewer>
+          <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="10"
+                      HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Content="取消" Command="{Binding CloseSettingsCommand}"/>
+            <Button Content="保存" Classes="accent" Command="{Binding SaveSettingsCommand}"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+    </Border>
+
+    <Border Grid.Row="0" Grid.RowSpan="3" Background="#66000000" IsVisible="{Binding PaletteOpen}">
+      <Border Classes="card" Width="420" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="20">
+        <Grid RowDefinitions="Auto,Auto,Auto">
+          <TextBlock Grid.Row="0" Text="调色板" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,14"/>
+          <ItemsControl Grid.Row="1" ItemsSource="{Binding PaletteColors}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Button Width="44" Height="44" Margin="4" CornerRadius="8" Background="{Binding}"
+                        BorderBrush="{DynamicResource AppBorderStrongBrush}" BorderThickness="1"
+                        Click="OnPaletteColorClick" Tag="{Binding}" ToolTip.Tip="{Binding}"/>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Content="关闭" Command="{Binding ClosePaletteCommand}"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+    </Border>
+
+    <Border Grid.Row="0" Grid.RowSpan="3" Background="#66000000" IsVisible="{Binding PolishOpen}">
+      <Border Classes="card" Width="560" MaxHeight="520" HorizontalAlignment="Center"
+              VerticalAlignment="Center" Padding="20">
+        <Grid RowDefinitions="Auto,*,Auto">
+          <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,12">
+            <TextBlock Grid.Column="0" Text="润色候选" FontSize="17" FontWeight="SemiBold"/>
+            <TextBlock Grid.Column="2" Text="{Binding PolishCounterText}"
+                       Foreground="{DynamicResource AppTextDimBrush}" VerticalAlignment="Center"/>
+          </Grid>
+          <Border Grid.Row="1" Background="{DynamicResource AppSurfaceAltBrush}"
+                  CornerRadius="8" Padding="14">
+            <ScrollViewer>
+              <TextBlock Text="{Binding PolishCurrent}" TextWrapping="Wrap" FontSize="14" LineHeight="24"/>
+            </ScrollViewer>
+          </Border>
+          <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" Margin="0,16,0,0">
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+              <Button Content="← 上一条" Classes="toolbar" Command="{Binding PolishPrevCommand}"/>
+              <Button Content="下一条 →" Classes="toolbar" Command="{Binding PolishNextCommand}"/>
+              <Button Content="重新生成" Classes="toolbar" Command="{Binding PolishRetryCommand}"/>
+            </StackPanel>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
+              <Button Content="取消" Command="{Binding PolishCancelCommand}"/>
+              <Button Content="采用这条" Classes="accent" Command="{Binding PolishAcceptCommand}"/>
+            </StackPanel>
+          </Grid>
+        </Grid>
+      </Border>
+    </Border>
+  </Grid>
+</UserControl>

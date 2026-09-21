@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+# 运行时产物（key / 设置 / 历史 / 图片）—— 不要提交
+.imgagent_key
+config.json
+state.json
+history.jsonl
+imgagent_data/
+# 自测/构建的临时产物
+/tmp_*

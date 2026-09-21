@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- 不依赖 AppCompat（避免引入额外依赖），用原生 Material/DeviceDefault 主题。
+       Avalonia 自带渲染，只要无 ActionBar 即可。 -->
+  <style name="MyTheme.NoActionBar" parent="@android:style/Theme.DeviceDefault.NoActionBar">
+    <item name="android:windowBackground">@android:color/black</item>
+  </style>
+</resources>

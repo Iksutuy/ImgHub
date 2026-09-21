@@ -1,0 +1,23 @@
+[app]
+title = imgagent
+package.name = imgagent
+package.domain = org.yutsuki
+source.dir = .
+source.include_exts = py,png,jpg,kv,atlas,json,md,sh
+source.exclude_dirs = tests,tools,.git,__pycache__
+version = 1.0.0
+requirements = python3,kivy>=2.3.0,pillow
+android.api = 33
+android.minapi = 21
+android.sdk = 33
+android.ndk = 25b
+android.permissions = INTERNET,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE
+p4a.bootstrap = sdl2
+presplash.filename = splash.png
+icon.filename = icon.png
+orientation = portrait
+fullscreen = 0
+spec.passes = []
+package.complete = false
+user = yutsuki
+user.initial_dir = ~/imgagent
