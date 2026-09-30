@@ -1,0 +1,327 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="using:ImgHub.App.Ui"
+             x:Class="ImgHub.App.App"
+             RequestedThemeVariant="Light">
+
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <Color x:Key="AppBg">#F7F8FA</Color>
+          <Color x:Key="AppSurface">#FFFFFF</Color>
+          <Color x:Key="AppSurfaceAlt">#F2F3F5</Color>
+          <Color x:Key="AppBorder">#E5E6EB</Color>
+          <Color x:Key="AppBorderStrong">#C9CDD4</Color>
+          <Color x:Key="AppText">#1D2129</Color>
+          <Color x:Key="AppTextSub">#4E5969</Color>
+          <Color x:Key="AppTextDim">#86909C</Color>
+          <Color x:Key="AppAccent">#3491FA</Color>
+          <Color x:Key="AppAccentHover">#206CCF</Color>
+          <!-- v5.24.0：按钮悬停底色（比 AppBorder 更明显，但不抢眼） -->
+          <Color x:Key="AppHover">#E3E5EA</Color>
+          <Color x:Key="AppAccentSoft">#E8F3FF</Color>
+          <Color x:Key="AppOk">#00B42A</Color>
+          <Color x:Key="AppWarn">#FF7D00</Color>
+          <Color x:Key="AppErr">#F53F3F</Color>
+          <Color x:Key="AppCost">#D25F00</Color>
+          <SolidColorBrush x:Key="AppBgBrush" Color="{StaticResource AppBg}" />
+          <SolidColorBrush x:Key="AppSurfaceBrush" Color="{StaticResource AppSurface}" />
+          <SolidColorBrush x:Key="AppSurfaceAltBrush" Color="{StaticResource AppSurfaceAlt}" />
+          <SolidColorBrush x:Key="AppBorderBrush" Color="{StaticResource AppBorder}" />
+          <SolidColorBrush x:Key="AppBorderStrongBrush" Color="{StaticResource AppBorderStrong}" />
+          <SolidColorBrush x:Key="AppTextBrush" Color="{StaticResource AppText}" />
+          <SolidColorBrush x:Key="AppTextSubBrush" Color="{StaticResource AppTextSub}" />
+          <SolidColorBrush x:Key="AppTextDimBrush" Color="{StaticResource AppTextDim}" />
+          <SolidColorBrush x:Key="AppAccentBrush" Color="{StaticResource AppAccent}" />
+          <SolidColorBrush x:Key="AppAccentHoverBrush" Color="{StaticResource AppAccentHover}" />
+          <SolidColorBrush x:Key="AppHoverBrush" Color="{StaticResource AppHover}" />
+          <SolidColorBrush x:Key="AppAccentSoftBrush" Color="{StaticResource AppAccentSoft}" />
+          <!-- v0.5.31：Markdown 行内代码前景色（浅色主题用深红，保证对比度） -->
+          <SolidColorBrush x:Key="AppCodeBrush" Color="#C7254E" />
+          <SolidColorBrush x:Key="AppOkBrush" Color="{StaticResource AppOk}" />
+          <SolidColorBrush x:Key="AppWarnBrush" Color="{StaticResource AppWarn}" />
+          <SolidColorBrush x:Key="AppErrBrush" Color="{StaticResource AppErr}" />
+          <SolidColorBrush x:Key="AppCostBrush" Color="{StaticResource AppCost}" />
+        </ResourceDictionary>
+
+        <ResourceDictionary x:Key="Dark">
+          <Color x:Key="AppBg">#171717</Color>
+          <Color x:Key="AppSurface">#232326</Color>
+          <Color x:Key="AppSurfaceAlt">#2E2E30</Color>
+          <Color x:Key="AppBorder">#3A3A3C</Color>
+          <Color x:Key="AppBorderStrong">#484849</Color>
+          <Color x:Key="AppText">#F6F6F6</Color>
+          <Color x:Key="AppTextSub">#C5C5C5</Color>
+          <Color x:Key="AppTextDim">#929293</Color>
+          <Color x:Key="AppAccent">#469AFA</Color>
+          <Color x:Key="AppAccentHover">#79C1FC</Color>
+          <Color x:Key="AppHover">#3E3E41</Color>
+          <Color x:Key="AppAccentSoft">#13224B</Color>
+          <Color x:Key="AppOk">#23C343</Color>
+          <Color x:Key="AppWarn">#FF9A2E</Color>
+          <Color x:Key="AppErr">#F76560</Color>
+          <Color x:Key="AppCost">#FFB65E</Color>
+          <SolidColorBrush x:Key="AppBgBrush" Color="{StaticResource AppBg}" />
+          <SolidColorBrush x:Key="AppSurfaceBrush" Color="{StaticResource AppSurface}" />
+          <SolidColorBrush x:Key="AppSurfaceAltBrush" Color="{StaticResource AppSurfaceAlt}" />
+          <SolidColorBrush x:Key="AppBorderBrush" Color="{StaticResource AppBorder}" />
+          <SolidColorBrush x:Key="AppBorderStrongBrush" Color="{StaticResource AppBorderStrong}" />
+          <SolidColorBrush x:Key="AppTextBrush" Color="{StaticResource AppText}" />
+          <SolidColorBrush x:Key="AppTextSubBrush" Color="{StaticResource AppTextSub}" />
+          <SolidColorBrush x:Key="AppTextDimBrush" Color="{StaticResource AppTextDim}" />
+          <SolidColorBrush x:Key="AppAccentBrush" Color="{StaticResource AppAccent}" />
+          <SolidColorBrush x:Key="AppAccentHoverBrush" Color="{StaticResource AppAccentHover}" />
+          <SolidColorBrush x:Key="AppHoverBrush" Color="{StaticResource AppHover}" />
+          <SolidColorBrush x:Key="AppAccentSoftBrush" Color="{StaticResource AppAccentSoft}" />
+          <!-- v0.5.31：Markdown 行内代码前景色（深色主题用亮橙，保证对比度） -->
+          <SolidColorBrush x:Key="AppCodeBrush" Color="#FFB86C" />
+          <SolidColorBrush x:Key="AppOkBrush" Color="{StaticResource AppOk}" />
+          <SolidColorBrush x:Key="AppWarnBrush" Color="{StaticResource AppWarn}" />
+          <SolidColorBrush x:Key="AppErrBrush" Color="{StaticResource AppErr}" />
+          <SolidColorBrush x:Key="AppCostBrush" Color="{StaticResource AppCost}" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+
+      <!--
+        CJK 字体链（顺序 = 优先级）：
+          1. 内嵌的 NotoSansSC（avares://）—— **Android 的中文靠它**，不依赖系统字体
+          2. Windows 系统雅黑（桌面端首选，字形/字重更全）
+          3. 兜底 sans-serif
+
+        ⚠️ Android 上系统字体名不可靠（Avalonia CJK 回归 #19868/#20195），
+        中文会渲染成方框；所以 **必须内嵌字体**（见 CONSTRAINTS D5）。
+
+        ⚠️ 必须用**静态**字体，不能用可变字体（VF）：
+        原 NotoSansSC-VF.ttf 的 wght 轴默认值是 100（Thin），
+        Avalonia 会按该默认值渲染 → 笔画极细、发虚模糊。
+        已用 fontTools 实例化到 wght=400 并子集化（17 MB → 7.15 MB）。
+        重新生成：python tools\make-static-font.py
+      -->
+      <FontFamily x:Key="AppFont">avares://ImgHub.App/Assets/Fonts/NotoSansSC-Regular.ttf#Noto Sans SC, Microsoft YaHei UI, Microsoft YaHei, Noto Sans CJK SC, Segoe UI, sans-serif</FontFamily>
+
+      <!--
+        按钮图标字体（v0.5.37）：Material Symbols Outlined 的**静态子集**。
+
+        为什么不用 Segoe MDL2 Assets：那是微软专有字体，
+          ① 不能随程序分发（许可）；② **Android 上不存在** ——
+          项目历史上靠 UseIcons 开关"绕开"，等于 Android 上永远没有图标。
+
+        ⚠️ 与中文字体同一条硬约束（CONSTRAINTS D6）：必须用**静态**字体。
+          原文件是可变字体（FILL/GRAD/opsz/wght 四轴，10.2 MB），
+          Avalonia 对 VF 的轴支持不完善 → 图标发虚。
+          已用 fontTools 实例化（FILL=0,GRAD=0,opsz=24,wght=400）并**子集化到 30 个图标**。
+          10.2 MB → 5.2 KB。重新生成：python tools\make-icon-font.py
+
+        ⚠️ 新增图标时必须先把它加进 tools/make-icon-font.py 的 ICON_CODEPOINTS，
+          重跑脚本，否则字形不在子集里 → 界面上显示成空白。
+      -->
+      <FontFamily x:Key="IconFont">avares://ImgHub.App/Assets/Fonts/MaterialSymbols.ttf#Material Symbols Outlined</FontFamily>
+    </ResourceDictionary>
+  </Application.Resources>
+
+  <Application.Styles>
+    <FluentTheme />
+    <Style Selector="TextBlock">
+      <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
+      <Setter Property="Foreground" Value="{DynamicResource AppTextBrush}" />
+    </Style>
+    <Style Selector="TextBox"><Setter Property="FontFamily" Value="{StaticResource AppFont}" /></Style>
+    <Style Selector="Button"><Setter Property="FontFamily" Value="{StaticResource AppFont}" /></Style>
+    <Style Selector="ComboBox"><Setter Property="FontFamily" Value="{StaticResource AppFont}" /></Style>
+    <Style Selector="CheckBox"><Setter Property="FontFamily" Value="{StaticResource AppFont}" /></Style>
+    <Style Selector="ListBoxItem"><Setter Property="FontFamily" Value="{StaticResource AppFont}" /></Style>
+
+    <!-- ===== v5.25.0：中文字体行高较大，ComboBox 需要足够容器 + 居中，
+         否则字底（尤其"质量/画幅/分辨率"的下缘）会被模板裁掉。
+         v5.28.0 调整：用户反馈「下拉框太高把生成按钮挤出视口」
+         +「文字底部仍有一点点被裁」→ 高度 40→34，并给模板内容显式上移 1px。 ===== -->
+    <Style Selector="ComboBox">
+      <Setter Property="MinHeight" Value="{x:Static ui:UiMetrics.FieldHeightWide}" />
+      <!-- 上下 padding 不对称：CJK 字形在小字号下基线偏低、下缘更长，
+           上移 1px 让文字视觉居中（用户要求「文本略微上移」） -->
+      <Setter Property="Padding" Value="11,0,6,2" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <!-- ComboBox 内部内容：显式居中 + 微调上移，消除字底裁切 -->
+    <Style Selector="ComboBox /template/ ContentPresenter">
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,-1,0,0" />
+    </Style>
+    <!-- 下拉列表项同样居中（列表里的字底此前也被裁） -->
+    <Style Selector="ComboBoxItem">
+      <Setter Property="MinHeight" Value="30" />
+      <Setter Property="Padding" Value="11,4,6,5" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="NumericUpDown">
+      <Setter Property="MinHeight" Value="{x:Static ui:UiMetrics.FieldHeightWide}" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Padding" Value="8,0,4,2" />
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="MinHeight" Value="{x:Static ui:UiMetrics.FieldHeightWide}" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Border.card">
+      <Setter Property="Background" Value="{DynamicResource AppSurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AppBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+    </Style>
+
+    <!-- ===== v0.5：统一的字段标签（左栏/设置共用）=====
+         用户标注「对齐到左边」→ 标签**左对齐**，与卡片内容左边界齐平；
+         固定宽 52 → 后面 ComboBox 左边缘仍对齐成一条竖线。 -->
+    <Style Selector="TextBlock.fieldLabel">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Width" Value="52" />
+      <Setter Property="TextAlignment" Value="Left" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,0,8,0" />
+      <Setter Property="Foreground" Value="{DynamicResource AppTextSubBrush}" />
+    </Style>
+
+    <Style Selector="Button">
+      <Setter Property="Background" Value="{DynamicResource AppSurfaceAltBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource AppTextBrush}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="14,7" />
+      <Setter Property="MinHeight" Value="{x:Static ui:UiMetrics.FieldHeightWide}" />
+      <!-- v5.25.0：内容一律居中（此前 StackPanel 内容在不同按钮里对齐不一） -->
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <!-- ===== 用户要求（v5.24.0）：鼠标悬停动画 =====
+         · 只过渡 Background / BorderBrush / Opacity —— **不动尺寸**（避免布局抖动，
+           上一轮踩过：工具栏出现/消失导致预览图上下跳）。
+         · 由 ViewModel.EnableHoverAnimation 控制（设置里可关）。
+         开 = 挂过渡（Transitions）；关 = 不挂 → 瞬时切换、无动画。 -->
+    <Style Selector="Button.hoverfx">
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.13" />
+          <DoubleTransition Property="Opacity" Duration="0:0:0.13" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Button.hoverfx:pointerover">
+      <Setter Property="Opacity" Value="0.92" />
+    </Style>
+    <Style Selector="Button.hoverfx:pressed">
+      <Setter Property="Opacity" Value="0.80" />
+    </Style>
+
+    <Style Selector="Button:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AppHoverBrush}" />
+    </Style>
+
+    <!-- ===== v0.5.37：按钮图标（Material Symbols 静态子集）=====
+         统一风格：同一字号、同一垂直居中、与文字保持固定间距。
+         用法：<TextBlock Classes="icon" Text="&#xE037;"/> 放在按钮内容里。
+         为什么用 TextBlock 而不是直接在 Content 里写字符：可单独控字号/颜色，
+         且与文字并排时基线对齐稳定（直接写在 Content 里会和文字混排）。
+
+         ⚠️ **不要给这里加 LineHeight**（v0.5.38 修，代价是实测过一次错位）：
+           我曾试图给 `.icon` 与相邻文字用同一个 LineHeight=17 来"对齐"，结果**反而错位**。
+           原因：图标字体（Material Symbols）自然行高 ≈ 1.2 em（17px 字号 → 20.4px），
+           而 LineHeight=17 < 20.4，Avalonia 便按 `baseline = LineHeight − descent` 放基线；
+           图标 descent≈0.1 em、中文字体 descent≈0.26 em → 两者基线差 ≈1.5px
+           → **视觉上图标偏上、文字偏下**（正是用户报的现象）。
+           **正解：两边都别设 LineHeight，只靠 `VerticalAlignment="Center"`。**
+           此时两个 TextBlock 各按自然行高排布、行盒中心对齐；而 Material Symbols
+           的字形中心恰好≈字体盒中心，中文亦如此 → 字形中心自然对齐（实测差 ≤1px）。 -->
+    <Style Selector="TextBlock.icon">
+      <Setter Property="FontFamily" Value="{StaticResource IconFont}" />
+      <Setter Property="FontSize" Value="17" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <!-- 与图标并排的**文字**：同样不要 LineHeight（理由见上），只靠 Center 对齐 -->
+    <Style Selector="TextBlock.iconText">
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <!-- 小号图标（密集工具条用，避免把按钮撑高） -->
+    <Style Selector="TextBlock.icon.small">
+      <Setter Property="FontSize" Value="15" />
+    </Style>
+    <Style Selector="TextBlock.iconText.small" />
+    <Style Selector="Button.accent">
+      <Setter Property="Background" Value="{DynamicResource AppAccentBrush}" />
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.accent:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AppAccentHoverBrush}" />
+    </Style>
+    <Style Selector="Button.toolbar">
+      <Setter Property="Padding" Value="10,5" />
+      <Setter Property="MinHeight" Value="30" />
+      <Setter Property="FontSize" Value="13" />
+    </Style>
+    <Style Selector="Button.toolbar.hoverfx">
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.13" />
+          <DoubleTransition Property="Opacity" Duration="0:0:0.13" />
+        </Transitions>
+      </Setter>
+    </Style>
+
+    <!-- ToggleButton（深色切换）悬停动画 -->
+    <Style Selector="ToggleButton.hoverfx">
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.13" />
+          <DoubleTransition Property="Opacity" Duration="0:0:0.13" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="ToggleButton.hoverfx:pointerover">
+      <Setter Property="Opacity" Value="0.92" />
+    </Style>
+    <Style Selector="TextBlock.section">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Foreground" Value="{DynamicResource AppTextSubBrush}" />
+    </Style>
+    <Style Selector="TextBlock.dim">
+      <Setter Property="Foreground" Value="{DynamicResource AppTextDimBrush}" />
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+    <Style Selector="TextBlock.mono">
+      <Setter Property="FontFamily" Value="Consolas, Menlo, monospace" />
+    </Style>
+
+    <!-- ============ 自绘标题栏（仿 Reasonix 风格）============ -->
+    <!-- 标题栏按钮：无背景、悬停浅灰、关闭按钮悬停红色 -->
+    <Style Selector="Button.titlebar">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource AppTextSubBrush}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Width" Value="34" />
+      <Setter Property="Height" Value="28" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.titlebar:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AppSurfaceAltBrush}" />
+    </Style>
+    <!-- 关闭按钮：悬停变红 -->
+    <Style Selector="Button.titlebar.close:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#E81123" />
+    </Style>
+    <Style Selector="Button.titlebar.close:pointerover">
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+  </Application.Styles>
+</Application>

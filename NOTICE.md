@@ -1,23 +1,47 @@
 # 第三方组件与许可声明（NOTICE）
 
-本项目（imgagent）以 **GPL-3.0** 发布。以下为所使用的第三方组件及其许可。
+本项目（imghub）以 **GPL-3.0** 发布。以下为所使用的第三方组件及其许可。
 
 ---
 
 ## 1. 内嵌字体（**重要：有独立许可**）
 
 ### Noto Sans SC
-- **文件**：`src/Imgagent.App/Assets/Fonts/NotoSansSC.ttf`
+- **文件**：`src/ImgHub.App/Assets/Fonts/NotoSansSC-Regular.ttf`（7.15 MB）
 - **用途**：Android 上的中文字体渲染兜底（Avalonia Android CJK 回归规避）
-- **来源**：Google Noto 字体项目（`NotoSansSC-VF.ttf` 可变字体）
+- **来源**：Google Noto 字体项目（`NotoSansSC-VF.ttf` 可变字体，Version 2.04）
+- **加工**：用 fontTools 实例化到 `wght=400` 并子集化（脚本：`tools/make-static-font.py`），
+  产物已**不含** `fvar`/`gvar`/`HVAR` 等可变字体表，是静态字体
 - **许可**：**SIL Open Font License 1.1 (OFL-1.1)**
 - **许可全文**：https://scripts.sil.org/OFL
+  （字体文件内的 `name` 表 nameID 13/14 即 OFL 声明原文，已随文件保留）
 
 > ⚠️ **OFL 与 GPL 的兼容说明**：
 > OFL-1.1 允许将字体嵌入到任何软件（包括 GPL 软件）中分发，
-> 但 **字体文件本身仍受 OFL 约束**（不得单独售卖、衍生字体不得用保留字体名）。
-> 本项目仅**原样嵌入**该字体，未做修改与改名，符合 OFL 要求。
-> 若移除该字体，Android 中文将显示为方框（见 docs/CONSTRAINTS.md D5）。
+> 但 **字体文件本身仍受 OFL 约束**（不得单独售卖；修改版不得使用保留字体名）。
+> 本项目只做**格式实例化与子集化**（未改变字形设计），属于 OFL 允许的修改，
+> 因此保留 "Noto Sans SC" 原名。
+> 若移除该字体，Android 中文将显示为方框（见 docs/CONSTRAINTS.md D5/D6）。
+
+### Material Symbols Outlined（按钮图标）
+- **文件**：`src/ImgHub.App/Assets/Fonts/MaterialSymbols.ttf`（**6.1 KB**）
+- **用途**：全部按钮/工具的图标（v0.5.37 起统一风格）
+- **来源**：Google Material Design Icons 项目的
+  `variablefont/MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].ttf`（可变字体，10.2 MB）
+- **加工**：用 fontTools **实例化**（FILL=0, GRAD=0, opsz=24, wght=400）+
+  **子集化到 34 个图标码位**（脚本：`tools/make-icon-font.py`），
+  产物**不含** `fvar`/`gvar`/`HVAR`（静态字体，规避 Avalonia 可变字体发虚问题）
+- **许可**：**Apache License 2.0**
+- **许可全文**：https://www.apache.org/licenses/LICENSE-2.0
+  （已随文件写入 `name` 表 nameID 13/14 —— 实例化会丢掉这两条，脚本里显式补回）
+- 源文件 `MaterialSymbolsOutlined.ttf`（10.2 MB）**不入库**（已在 `.gitignore`）
+
+> ⚠️ **为什么不用系统自带的 `Segoe MDL2 Assets` / `Segoe UI Symbol`**：
+> 那是**微软专有字体** —— ① 不能随程序分发；② **Android 上根本不存在**。
+> 项目历史上用 `UseIcons` 开关"绕开"，等价于 Android 上永远没有图标。
+> 改为内嵌开源字体后两端行为一致（v0.5.37）。
+> **新增图标时必须**先把它加进 `tools/make-icon-font.py` 的 `ICON_CODEPOINTS` 再重跑脚本，
+> 否则字形不在子集里 → 界面上显示空白。
 
 ---
 
@@ -51,9 +75,9 @@
 
 | 环境变量 | 文件 |
 |---|---|
-| `OPENROUTER_API_KEY` | `%LOCALAPPDATA%\imgagent\.imgagent_key` |
-| `IMGAGENT_APIMART_API_KEY` | `...\.imgagent_apimart_key` |
-| `IMGAGENT_POLISH_API_KEY` | `...\.imgagent_polish_key` |
+| `OPENROUTER_API_KEY` | `%LOCALAPPDATA%\imghub\.imghub_key` |
+| `IMGHUB_APIMART_API_KEY` | `...\.imghub_apimart_key` |
+| `IMGHUB_POLISH_API_KEY` | `...\.imghub_polish_key` |
 
 这些文件已在 `.gitignore` 中排除。
 

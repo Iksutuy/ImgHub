@@ -8,8 +8,8 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 
 $root = Split-Path -Parent $PSScriptRoot
-$src = Join-Path $root 'src\Imgagent.App\Assets\app-icon.png'
-$resRoot = Join-Path $root 'src\Imgagent.Android\Resources'
+$src = Join-Path $root 'src\ImgHub.App\Assets\app-icon.png'
+$resRoot = Join-Path $root 'src\ImgHub.Android\Resources'
 
 if (-not (Test-Path $src)) { throw "source icon missing: $src" }
 
@@ -99,7 +99,7 @@ $colors = @'
 Set-Content -Path (Join-Path $colorsDir 'colors.xml') -Value $colors -Encoding UTF8
 
 # 清理旧资源
-$oldIcon = Join-Path $root 'src\Imgagent.Android\Icon.png'
+$oldIcon = Join-Path $root 'src\ImgHub.Android\Icon.png'
 if (Test-Path $oldIcon) { Remove-Item $oldIcon -Force; Write-Output "removed old Icon.png" }
 $oldDrawable = Join-Path $resRoot 'drawable'
 if (Test-Path $oldDrawable) { Remove-Item $oldDrawable -Recurse -Force; Write-Output "removed old drawable/" }

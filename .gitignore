@@ -6,9 +6,10 @@ obj/
 .vs/
 *.nupkg
 
-# 发布产物（走 GitHub Releases 分发，不入库）
+# ============================================================ 发布产物（走 GitHub Releases 分发，不入库）
 release/
 publish/
+dist/
 *.apk
 *.aab
 *.zip
@@ -25,11 +26,15 @@ publish/
 *.keystore
 *.jks
 # 生成的 ico（由 make-icon.ps1 从 PNG 生成）
-src/Imgagent.Desktop/app.ico
+src/ImgHub.Desktop/app.ico
 
 # ============================================================ 运行时数据（绝不入库）
 # 可能被误提交的用户数据目录
-imgagent_data/
+imghub_data/
+# 新旧两代 key 文件名都要忽略：v0.5.28 改名后兼容层仍会读取/沿用旧名文件
+.imghub_key
+.imghub_apimart_key
+.imghub_polish_key
 .imgagent_key
 .imgagent_apimart_key
 .imgagent_polish_key
@@ -63,4 +68,14 @@ _*.py
 
 # ============================================================ 工具生成
 .codegraph/
-.imagagent/
+.imghub/
+
+# ============================================================ 历史残留（勿重建）
+# AGENTS.md §6 声明 avalonia/ 已于 v0.5.28 清理；此处防止误重建入库。
+/avalonia/
+
+# ============================================================ 图标字体源文件
+# MaterialSymbolsOutlined.ttf 是 10.2 MB 的**可变字体**源文件，只用于本地生成子集，
+# 不入库（产物 MaterialSymbols.ttf 仅 5.2 KB，已入库）。
+# 重新生成：python tools\make-icon-font.py
+/src/ImgHub.App/Assets/Fonts/MaterialSymbolsOutlined.ttf

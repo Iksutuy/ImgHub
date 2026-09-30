@@ -37,13 +37,17 @@ bash tools/verify_all.sh
 
 | 项 | 值 |
 |---|---|
-| 版本 | 5.17.0 |
-| 代码量 | 13,912 行（含测试 4,076） |
-| 测试 | **956 项**，全离线 |
+| 版本 | 5.18.3（见 `impydroid/__init__.py` 的 `__version__`） |
+| 代码量 | 约 14,700 行（`impydroid/` + `tests/` + `tools/` + `main.py`） |
+| 测试 | **959 项**，全离线 |
 | 模块 | 20 个（`impydroid/` 19 + `main.py`） |
 | 依赖 | **纯标准库** + 5 个可选（全有降级） |
-| 平台 | Pydroid 3 / Termux（Android） |
-| 最大文件 | `curses_ui.py` 3,543 行 |
+| 平台 | Pydroid 3 / Termux（Android），亦可跑 Windows |
+| 最大文件 | `curses_ui.py` 3,805 行 |
+
+> ⬆️ 上表的行数/版本随迭代变化；**测试项数按实际脚本输出为准**
+> （`test_impydroid.py` 801 + `test_entrypoints.py` 42 + `test_polish.py` 38
+> + `test_presentation.py` 51 + `test_concurrency.py` 27 = 959）。
 
 ---
 

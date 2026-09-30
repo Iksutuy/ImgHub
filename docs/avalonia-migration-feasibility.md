@@ -1,8 +1,12 @@
 # Avalonia (C#/.NET) 跨平台重写可行性研究
 
-> 目标：把现有 imgagent（纯标准库 Python + curses TUI）重写为**图形化工作台**，
+> 目标：把现有 imghub（纯标准库 Python + curses TUI）重写为**图形化工作台**，
 > 同时跑在 **Windows 桌面**与 **Android**，功能对齐并易于扩展。
 > 调研日期：2026-09-19 · 本机环境：Windows / .NET SDK 10.0.302 / Java 26 / Android SDK (API 34,35)
+
+> 📌 **历史文档，保留原貌不改**。文中的 `mobile/` 现已改名为 `legacy/`，
+> `avalonia/` 子目录的内容已提到仓库根目录（见 [port-status.md](port-status.md) 四·十四）。
+> 结论与风险判断仍有效；§四 的「P0 字体 gate」已通过（内嵌静态字体 + 桌面实测）。
 
 ---
 
@@ -64,7 +68,7 @@
 
 ### 3.1 已实测通过的项目（Windows 桌面）
 
-我创建了一个 Avalonia 12.1.2 项目，完整复刻了 imgagent 的三栏工作台界面，实测结果：
+我创建了一个 Avalonia 12.1.2 项目，完整复刻了 imghub 的三栏工作台界面，实测结果：
 
 ```
 [OK] 内存字节 -> Avalonia Bitmap: 64x64       ← 生成结果不落盘直接显示
@@ -114,7 +118,7 @@
 **结论**：该问题是**版本相关 + 设备相关**的，不能仅凭文档断定已修。
 
 **对策（必须做，且是项目启动前的 gate）**：
-1. 在**目标真机**上跑最小验证：一个只显示「中文测试 imgagent 生成 编辑 撤回」的页面；
+1. 在**目标真机**上跑最小验证：一个只显示「中文测试 imghub 生成 编辑 撤回」的页面；
 2. 覆盖 `net10.0-android`（Avalonia 12）与 `net10.0-android`（Avalonia 11.3.x）两条线；
 3. **嵌入 CJK 字体作为兜底**（推荐，一劳永逸）：
    ```xml
@@ -125,13 +129,13 @@
    ```
    ```xml
    <TextBlock Text="中文测试"
-              FontFamily="avares://Imgagent/Assets/Fonts/NotoSansSC-Regular.otf#Noto Sans SC" />
+              FontFamily="avares://ImgHub/Assets/Fonts/NotoSansSC-Regular.otf#Noto Sans SC" />
    ```
    并在 `Program.cs` 注册字体集合：
    ```csharp
    var fonts = new EmbeddedFontCollection(
-       new Uri("fonts:Imgagent", UriKind.Absolute),
-       new Uri("avares://Imgagent/Assets/Fonts", UriKind.Absolute));
+       new Uri("fonts:ImgHub", UriKind.Absolute),
+       new Uri("avares://ImgHub/Assets/Fonts", UriKind.Absolute));
    FontManager.Current.AddFontCollection(fonts);
    ```
    注意：嵌入字体后仍**需真机验证**——#12099 表明它不总是成功。
@@ -164,8 +168,8 @@
 ## 五、推荐架构（跨平台工作台）
 
 ```
-Imgagent.slnx
-├── Imgagent.Core/            ← 平台无关（netstandard/net10.0）
+ImgHub.slnx
+├── ImgHub.Core/            ← 平台无关（netstandard/net10.0）
 │   ├── Models/                Item、GenResult、Session、AppConfig
 │   ├── Services/
 │   │   ├── IImageApi.cs       生成/编辑/上传/轮询（双 provider）
@@ -176,13 +180,13 @@ Imgagent.slnx
 │   │   ├── ICostEstimator.cs  成本估算表
 │   │   └── IImageCodec.cs     解码/缩放（SkiaSharp）
 │   └── Utilities/             错误翻译、重试、文件名安全
-├── Imgagent.App/             ← 共享 UI（XAML + ViewModel）
+├── ImgHub.App/             ← 共享 UI（XAML + ViewModel）
 │   ├── Views/                  GenerateView / EditView / HistoryView / SettingsView
 │   ├── ViewModels/             MVVM（CommunityToolkit.Mvvm）
 │   ├── Assets/Fonts/           NotoSansSC（CJK 兜底）
 │   └── App.axaml
-├── Imgagent.Desktop/         ← net10.0  （Windows/Linux/macOS）
-└── Imgagent.Android/         ← net10.0-android  （APK/AAB）
+├── ImgHub.Desktop/         ← net10.0  （Windows/Linux/macOS）
+└── ImgHub.Android/         ← net10.0-android  （APK/AAB）
 ```
 
 **关键设计原则（延续原项目的工程约束）**：
@@ -190,7 +194,7 @@ Imgagent.slnx
 2. **平台差异走接口注入**（`IStorageService`、`IPreviewService`），
    各 head 提供实现（Windows 用 `StorageProvider`，Android 用 `StorageProvider` + MediaStore）；
 3. **配置与密钥存储**：改用各平台安全存储（Windows DPAPI / Android EncryptedSharedPreferences），
-   比原项目的明文 `.imgagent_key` 更安全；
+   比原项目的明文 `.imghub_key` 更安全；
 4. **成本/离线/提示词不丢** 等业务规则**逐条对应移植**，并保留回归测试。
 
 ---

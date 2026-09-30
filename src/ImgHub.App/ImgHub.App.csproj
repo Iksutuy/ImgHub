@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>ImgHub.App</RootNamespace>
+    <AssemblyName>ImgHub.App</AssemblyName>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ImgHub.Core\ImgHub.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 集成测试需要断言 App 层的**纯计算**逻辑（如 RegionCanvas 的缩放锚点数学），
+         这些逻辑没有 UI 也能验证，暴露为 internal 比 public 更克制（不扩大公开 API 面）。 -->
+    <InternalsVisibleTo Include="ImgHub.Integration.Tests" />
+  </ItemGroup>
+
+</Project>

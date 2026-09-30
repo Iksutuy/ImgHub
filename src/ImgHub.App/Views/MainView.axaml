@@ -1,0 +1,1031 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ImgHub.App.ViewModels"
+             xmlns:ctrl="using:ImgHub.App.Controls"
+             xmlns:sections="using:ImgHub.App.Views.Sections"
+             xmlns:ui="using:ImgHub.App.Ui"
+             xmlns:core="using:ImgHub.Core"
+             x:Class="ImgHub.App.Views.MainView"
+             x:DataType="vm:MainViewModel"
+             Background="{DynamicResource AppBgBrush}">
+  <Grid RowDefinitions="Auto,*,Auto" Margin="12">
+    <Border Grid.Row="0" Classes="card" Padding="14,10">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12">
+          <TextBlock Text="{CompiledBinding L[app.title]}" FontSize="16" FontWeight="SemiBold"
+                     Foreground="{DynamicResource AppAccentBrush}" VerticalAlignment="Center"/>
+          <!-- P5：就绪徽标 = 启动自检结论（全功能可用才写「就绪」，否则写未就绪原因）。
+               点击可查看逐项自检详情，未就绪时直接打开设置去修。
+               ⚠️ v5.25.0：改用 Border 而非 Button —— 全局 Button.MinHeight=34 会把这个
+               胶囊顶高，导致文字在 34px 里视觉偏上（用户报"就绪不居中"）。
+               v5.25.0 美化：就绪=绿点、未就绪=橙点，一眼可辨。 -->
+          <Button Command="{CompiledBinding ShowSelfCheckCommand}" Padding="0" BorderThickness="0"
+                  Background="Transparent" MinHeight="0" MinWidth="0"
+                  VerticalAlignment="Center" Cursor="Hand"
+                  Classes.hoverfx="{CompiledBinding EnableHoverAnimation}"
+                  ToolTip.Tip="{CompiledBinding L[msg.selfCheckTip]}">
+            <Border CornerRadius="999" Padding="10,3" VerticalAlignment="Center"
+                    Background="{DynamicResource AppAccentSoftBrush}">
+              <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                <Ellipse Width="7" Height="7" VerticalAlignment="Center"
+                         Fill="{CompiledBinding SelfCheckBrush}"/>
+                <TextBlock Text="{CompiledBinding SelfCheckText}" FontSize="12" LineHeight="16"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource AppAccentBrush}"/>
+              </StackPanel>
+            </Border>
+          </Button>
+          <TextBlock Text="{CompiledBinding Model}" FontSize="12" VerticalAlignment="Center"
+                     IsVisible="{CompiledBinding IsWideLayout}"
+                     Foreground="{DynamicResource AppTextSubBrush}"/>
+        </StackPanel>
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
+          <ProgressBar IsIndeterminate="True" Width="56" Height="5"
+                       IsVisible="{CompiledBinding Busy}" VerticalAlignment="Center"/>
+          <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center"
+                      IsVisible="{CompiledBinding IsWideLayout}"
+                      ToolTip.Tip="{CompiledBinding L[msg.costTip]}">
+            <TextBlock Text="{CompiledBinding ProviderLabel}" FontWeight="SemiBold"
+                       Foreground="{DynamicResource AppCostBrush}"/>
+            <TextBlock Text="{CompiledBinding L[msg.cost]}" Foreground="{DynamicResource AppTextDimBrush}"/>
+            <TextBlock Text="{CompiledBinding ProviderCost, StringFormat='${0:0.0000}'}"
+                       FontWeight="SemiBold" Foreground="{DynamicResource AppCostBrush}"/>
+          </StackPanel>
+          <ComboBox Width="132" MinHeight="{x:Static ui:UiMetrics.FieldHeightCompact}" VerticalAlignment="Center"
+                    ItemsSource="{CompiledBinding Providers}"
+                    SelectedItem="{CompiledBinding SelectedProvider, Mode=TwoWay}"/>
+          <!-- 深色切换：窄屏隐藏（顶栏宽度不够），设置浮层里有等价的「深色主题」开关 -->
+          <!-- 深色切换：窄屏隐藏（顶栏宽度不够），设置浮层里有等价的「深色主题」开关。
+               v0.5.38：加图标（用户报"深色按钮没有图标"）。
+               图标随当前主题切换：浅色→月亮（暗示切到深色），深色→太阳（暗示切回浅色）。 -->
+          <ToggleButton IsChecked="{CompiledBinding DarkTheme}"
+                        IsVisible="{CompiledBinding IsWideLayout}"
+                        Classes="toolbar" VerticalAlignment="Center"
+                        ToolTip.Tip="{CompiledBinding L[settings.darkTip]}">
+            <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+              <TextBlock Classes="icon" Text="&#xE51C;" IsVisible="{Binding !DarkTheme}"/>
+              <TextBlock Classes="icon" Text="&#xE518;" IsVisible="{CompiledBinding DarkTheme}"/>
+              <TextBlock Classes="iconText" Text="{CompiledBinding L[common.dark]}" VerticalAlignment="Center"/>
+            </StackPanel>
+          </ToggleButton>
+          <!-- 设置入口（需求 #6：放在顶栏右侧）
+               窄屏只留图标：顶栏还要放 provider 下拉，文字会挤出边界。 -->
+          <Button Classes="toolbar accent" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Command="{CompiledBinding OpenSettingsCommand}"
+                  VerticalAlignment="Center" ToolTip.Tip="{CompiledBinding L[top.settingsTip]}">
+            <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+              <!-- ⚠️ v0.5.39：改用 Classes="icon"（与其它按钮统一），**不要写 LineHeight**。
+                   上一版这里手写了 FontFamily + LineHeight="17"：
+                     · LineHeight 17 < 图标字体自然行盒 20.40px → Avalonia 把 baseline 压到底
+                       → 图标比文字**偏低**（用户报"设置图标仍然比文字低一点"）；
+                     · 手写 FontFamily 而非用 .icon 类 → 与全站图标风格可能漂移。
+                   正解：交给 .icon 样式（FontFamily + Center，无 LineHeight）。 -->
+              <TextBlock Classes="icon" Text="&#xE8B9;"/>
+              <TextBlock Classes="iconText" Text="{CompiledBinding L[settings.title]}"
+                         IsVisible="{CompiledBinding IsWideLayout}"/>
+            </StackPanel>
+          </Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!--
+      响应式主体：
+        · 宽屏（IsWideLayout=true）→ 三栏并排（参数 | 预览 | 历史）
+        · 窄屏（手机竖屏）        → 两行堆叠：第一行[预览|历史]，第二行[参数]
+      用 IsVisible 切换两套容器（Avalonia 的 Grid 定义不便直接绑定）。
+    -->
+    <Grid Grid.Row="1" Margin="0,10,0,10"
+          IsVisible="{CompiledBinding IsWideLayout}"
+          ColumnDefinitions="1.02*,1.18*,1*">
+      <Border Grid.Column="0" Classes="card" Padding="14,14,6,14" Margin="0,0,10,0">
+        <!-- v0.5.29 修回归：滚动条列宽必须 20、内容右边距必须 12 ——
+             上轮改成 18/10 后滚动条与内容（尤其「高级参数」Expander 的右边框）
+             发生干涉（用户报问题 2）。这两个值是一组，改动要成对。
+             详见 v5.25.0 的原始注释：20 + 12 是为了让按钮不压住拖动条。 -->
+        <Grid ColumnDefinitions="*,20">
+          <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Spacing="10" Margin="0,0,12,4">
+              <TextBlock Text="{CompiledBinding L[param.genParams]}" Classes="section"/>
+              <!-- P6/v5.25.0：输入框高 34（全局 ComboBox 样式），字底不再被裁。
+                   v5.28.0：行距 8→4，避免 5 行下拉框把下方「生成」按钮挤出视口。 -->
+              <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="{CompiledBinding L[param.model]}" Classes="fieldLabel" Margin="0,0,8,4"/>
+                <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{CompiledBinding ModelChoices}"
+                          SelectedItem="{CompiledBinding Model}" HorizontalAlignment="Stretch"
+                          Margin="0,0,0,4" PlaceholderText="{CompiledBinding L[param.autoModel]}"/>
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="{CompiledBinding L[param.quality]}" Classes="fieldLabel" Margin="0,0,8,4"/>
+                <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{CompiledBinding QualityOptions}"
+                          SelectedIndex="{CompiledBinding QualityIndex, Mode=TwoWay}"
+                          HorizontalAlignment="Stretch"
+                          Margin="0,0,0,4"/>
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="{CompiledBinding L[param.aspect]}" Classes="fieldLabel" Margin="0,0,8,4"/>
+                <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{CompiledBinding AspectOptions}"
+                          SelectedIndex="{CompiledBinding AspectIndex, Mode=TwoWay}"
+                          HorizontalAlignment="Stretch"
+                          Margin="0,0,0,4"/>
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="{CompiledBinding L[param.resolution]}" Classes="fieldLabel"
+                           Margin="0,0,8,4" IsVisible="{CompiledBinding HasResolutionTier}"/>
+                <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{CompiledBinding ResolutionOptions}"
+                          SelectedIndex="{CompiledBinding ResolutionIndex, Mode=TwoWay}"
+                          HorizontalAlignment="Stretch"
+                          Margin="0,0,0,4" IsVisible="{CompiledBinding HasResolutionTier}"/>
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="{CompiledBinding L[param.format]}" Classes="fieldLabel" Margin="0,0,8,0"/>
+                <ComboBox Grid.Row="4" Grid.Column="1" ItemsSource="{CompiledBinding OutputFormatOptions}"
+                          SelectedIndex="{CompiledBinding OutputFormatIndex, Mode=TwoWay}"
+                          HorizontalAlignment="Stretch"/>
+              </Grid>
+              <Grid ColumnDefinitions="Auto,*" Margin="0,2,0,0">
+                <TextBlock Grid.Column="0" Text="{CompiledBinding L[param.batch]}" Classes="fieldLabel" Margin="0,0,8,0"/>
+                <!-- P8：「离线」复选框已移除（debug 功能，由设置 + IMGHUB_DEBUG=1 控制） -->
+                <!-- v5.28.0：上限随模型变化（gemini 图像系服务端仅支持 n=1） -->
+                <NumericUpDown Grid.Column="1" Value="{CompiledBinding BatchN}" Minimum="1"
+                               Maximum="{CompiledBinding BatchNMax}"
+                               Increment="1" Width="104" HorizontalAlignment="Left"
+                               ToolTip.Tip="{CompiledBinding BatchNHint}"/>
+              </Grid>
+              <Border Background="{DynamicResource AppSurfaceAltBrush}" CornerRadius="8" Padding="10,7">
+                <!-- v5.28.0：加 Wrap —— 此前长文案（含模型名与历史均价）会被右侧
+                     滚动条列裁掉半截（用户可见"…历史平"被切断） -->
+                <TextBlock Text="{CompiledBinding EstimatedCostText}" FontSize="12"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource AppCostBrush}"/>
+              </Border>
+
+              <!-- v5.27.0：文档对齐的高级参数（默认收起，避免干扰常用流程）。
+                   逐项对应官方文档：
+                     · 背景 background / 压缩 output_compression / 审核 moderation（APIMart）
+                     · 种子 seed / 流式 stream / provider 路由（OpenRouter） -->
+              <!-- Plan A：高级参数已抽成 Sections/AdvancedParamsPanel（两套布局共用）。
+                   v5.28.0 前这里是两份逐行重复的 Expander，改一处必须改两处。 -->
+              <sections:AdvancedParamsPanel/>
+              <!-- 提示词标题行：「生成提示」放这里而不是操作按钮行 ——
+                   它是**提示词辅助**（讲怎么写），与「生成/编辑/清空」这些执行动作语义不同；
+                   挤在操作行会让 5 个按钮折成两行（用户实测反馈）。 -->
+              <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,0">
+                <TextBlock Grid.Column="0" Text="{CompiledBinding L[param.prompt]}" Classes="section"
+                           VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6"
+                            HorizontalAlignment="Right">
+                  <!-- 即梦专属：素材提取（商品 6 种 / 元素 4 种） -->
+                  <Button Padding="8,2" Classes="toolbar"
+                          Classes.hoverfx="{CompiledBinding EnableHoverAnimation}"
+                          Command="{CompiledBinding OpenExtractCommand}"
+                          IsVisible="{CompiledBinding IsJimengProvider}"
+                          ctrl:Help.Tip="{CompiledBinding L[param.extractTipJimeng]}">
+                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                      <TextBlock Classes="icon small" Text="&#xE8B7;"/>
+                      <TextBlock Classes="iconText small" Text="{CompiledBinding L[param.extract]}" FontSize="12" VerticalAlignment="Center"/>
+                    </StackPanel>
+                  </Button>
+                  <Button Padding="8,2" Classes="toolbar"
+                          Classes.hoverfx="{CompiledBinding EnableHoverAnimation}"
+                          Command="{CompiledBinding OpenGuideCommand}"
+                          ctrl:Help.Tip="{CompiledBinding L[param.promptGuideTip]}">
+                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                      <TextBlock Classes="icon small" Text="&#xEA19;"/>
+                      <TextBlock Classes="iconText small" Text="{CompiledBinding L[param.genPrompt]}" FontSize="12" VerticalAlignment="Center"/>
+                    </StackPanel>
+                  </Button>
+                </StackPanel>
+              </Grid>
+              <!-- v0.5：文本靠**左上角**（用户标注）—— 多行输入从顶部开始更符合直觉 -->
+              <TextBox Text="{CompiledBinding Prompt}" AcceptsReturn="True" Height="{x:Static ui:UiMetrics.PromptBoxHeightWide}"
+                       TextWrapping="Wrap" CornerRadius="8"
+                       VerticalContentAlignment="Top" Padding="10,8"
+                       PlaceholderText="{CompiledBinding L[param.promptPlaceholder]}"/>
+              <!-- v0.5：4 个按钮**同排**（用户标注「清空放在同一排」）——
+                   收窄 padding 与图标间距使其并排放得下；WrapPanel 仍作溢出保护。
+                   v5.28.0：统一高 34 与「系统看图器/保存到相册」对齐（此前 Padding
+                   各自不同导致高度参差、看起来没对齐）。 -->
+              <WrapPanel Orientation="Horizontal" Margin="0,0,0,0">
+                <Button Classes="accent" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}"
+                        Command="{CompiledBinding GenerateCommand}" IsEnabled="{CompiledBinding CanRun}"
+                        MinHeight="{x:Static ui:UiMetrics.FieldHeightWide}" Padding="12,0" Margin="0,0,6,0">
+                  <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                    <TextBlock Classes="icon" Text="&#xE037;"/>
+                    <TextBlock Classes="iconText" Text="{CompiledBinding L[action.generate]}" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
+                <Button Classes.hoverfx="{CompiledBinding EnableHoverAnimation}"
+                        Command="{CompiledBinding EditCommand}" IsEnabled="{CompiledBinding CanRun}"
+                        MinHeight="{x:Static ui:UiMetrics.FieldHeightWide}" Padding="10,0" Margin="0,0,6,0"
+                        ToolTip.Tip="{CompiledBinding EditTip}">
+                  <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                    <TextBlock Classes="icon" Text="&#xE3C9;"/>
+                    <TextBlock Classes="iconText" Text="{CompiledBinding L[action.edit]}" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
+                <Button Classes.hoverfx="{CompiledBinding EnableHoverAnimation}"
+                        Command="{CompiledBinding PolishPromptCommand}"
+                        MinHeight="{x:Static ui:UiMetrics.FieldHeightWide}" Padding="10,0" Margin="0,0,6,0" ctrl:Help.Tip="{CompiledBinding L[param.genPromptTip]}">
+                  <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                    <TextBlock Classes="icon" Text="&#xE664;"/>
+                    <TextBlock Classes="iconText" Text="{CompiledBinding L[param.polish]}" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
+                <!-- v0.5.31：提示词指南按钮已移到「提示词」标题行（避免此行动作按钮折行） -->
+                <Button Classes.hoverfx="{CompiledBinding EnableHoverAnimation}"
+                        Click="OnClearPromptClick" MinHeight="{x:Static ui:UiMetrics.FieldHeightWide}" Padding="10,0"
+                        ctrl:Help.Tip="{CompiledBinding L[param.clearTip]}">
+                  <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                    <TextBlock Classes="icon" Text="&#xE872;"/>
+                    <TextBlock Classes="iconText" Text="{CompiledBinding L[param.clear]}" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
+              </WrapPanel>
+              <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,4,0,0">
+                <TextBlock Grid.Column="0" Text="{CompiledBinding L[ref.title]}" Classes="section"
+                           VerticalAlignment="Center"/>
+                <CheckBox Grid.Column="1" Content="{CompiledBinding L[ref.keep]}" IsChecked="{CompiledBinding KeepRefImages}"
+                          Margin="0,0,6,0" FontSize="12" VerticalAlignment="Center"
+                          ToolTip.Tip="{CompiledBinding L[ref.keepTip]}"/>
+                <Button Grid.Column="2" Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Padding="8,3" Click="OnAddRefImageClick" ToolTip.Tip="{CompiledBinding L[ref.addTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE145;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[ref.add]}" VerticalAlignment="Center"/></StackPanel></Button>
+              </Grid>
+              <ListBox ItemsSource="{CompiledBinding RefImages}" MaxHeight="84" CornerRadius="8"
+                       Background="{DynamicResource AppSurfaceAltBrush}" Padding="2">
+                <ListBox.ItemTemplate>
+                  <!-- Plan B：项类型是 PreviewThumb（不是 VM）→ 单独声明 x:DataType -->
+                  <DataTemplate x:DataType="vm:PreviewThumb">
+                    <Grid ColumnDefinitions="28,*,Auto" Margin="0,1">
+                      <Border Grid.Column="0" Width="24" Height="24" CornerRadius="4"
+                              Background="{DynamicResource AppSurfaceBrush}">
+                        <Image Source="{CompiledBinding Thumb}" Stretch="UniformToFill"/>
+                      </Border>
+                      <TextBlock Grid.Column="1" Text="{CompiledBinding ShortPrompt}" FontSize="11"
+                                 VerticalAlignment="Center" Margin="6,0,0,0"
+                                 TextTrimming="CharacterEllipsis"/>
+                      <Button Grid.Column="2" Classes="toolbar" Classes.hoverfx="{Binding $parent[UserControl].DataContext.EnableHoverAnimation}" Padding="4,2" Command="{Binding $parent[ListBox].DataContext.RemoveRefImageCommand}" CommandParameter="{Binding}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon small" Text="&#xE5CD;"/><TextBlock Classes="iconText small" Text="✕" VerticalAlignment="Center"/></StackPanel></Button>
+                    </Grid>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <!-- P2/P12：整行可右键；多选模式可批量删除 -->
+              <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                <TextBlock Grid.Column="0" Text="{CompiledBinding L[promptHist.title]}" Classes="section"
+                           VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                  <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Padding="8,3" IsVisible="{CompiledBinding PromptMultiSelect}" Click="OnDeleteSelectedPromptsClick" ToolTip.Tip="{CompiledBinding L[promptHist.deleteSelectedTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE872;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[action.deleteSelected]}" VerticalAlignment="Center"/></StackPanel></Button>
+                  <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Padding="8,3" Click="OnTogglePromptMultiClick" ToolTip.Tip="{CompiledBinding L[promptHist.multiTip]}">
+                    <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                      <TextBlock Classes="icon" Text="&#xE413;"/>
+                      <TextBlock Classes="iconText" Text="{CompiledBinding PromptMultiButtonText}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                  </Button>
+                </StackPanel>
+              </Grid>
+              <ListBox x:Name="PromptHistoryList" ItemsSource="{CompiledBinding PromptHistory}"
+                       CornerRadius="8" MaxHeight="120"
+                       Padding="2" Background="{DynamicResource AppSurfaceAltBrush}"
+                       SelectionChanged="OnPromptHistorySelected">
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <!-- P2：ContextMenu 挂在 DataTemplate 根容器 + Transparent 背景 →
+                         整行（含空白区）都能弹出菜单 -->
+                    <Border Background="Transparent">
+                      <Border.ContextMenu>
+                        <ContextMenu>
+                          <!-- ⚠️ v0.5.40：ContextMenu 是**独立视觉树**，DataContext 不继承 →
+                               编译绑定在这里找不到 VM 的 `L`（报 AVLN2000 "of name 'L' on type 'System.String'"）。
+                               这里用**经典绑定 + 显式 Source**（本文件的 DataType 是 string/prompt 项）。 -->
+                          <MenuItem Header="{Binding [promptHist.deleteOneTip], Source={x:Static ui:Localizer.Instance}}"
+                                    Click="OnPromptHistoryDeleteClick"/>
+                        </ContextMenu>
+                      </Border.ContextMenu>
+                      <TextBlock Text="{Binding}" FontSize="12" Margin="0,1"
+                                 TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding}"/>
+                    </Border>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </StackPanel>
+          </ScrollViewer>
+        </Grid>
+      </Border>
+
+      <Border Grid.Column="1" Classes="card" Padding="14" Margin="0,0,10,0">
+        <!-- P4：Row3 高度恒定（非编辑模式显示引导文案），避免点「编辑图片」时预览被压缩上移 -->
+        <!-- Row3 = 标注工具条（固定高度）；「系统看图器/保存到相册」已移到底栏左侧 -->
+        <Grid RowDefinitions="Auto,2*,Auto,Auto">
+          <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,8">
+            <TextBlock Grid.Column="0" Text="{CompiledBinding L[action.preview]}" Classes="section"/>
+            <!-- P7：路径右对齐到「编辑图片」按钮左缘 -->
+            <TextBlock Grid.Column="1" Text="{CompiledBinding PreviewPath}" Classes="dim"
+                       TextTrimming="CharacterEllipsis" HorizontalAlignment="Right"
+                       TextAlignment="Right" Margin="10,0,10,0"/>
+            <Button Grid.Column="2" Classes="toolbar accent" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}"
+                    IsEnabled="{CompiledBinding CanAnnotate}" Click="OnToggleRegionClick"
+                    ToolTip.Tip="{CompiledBinding L[region.maskHint]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE3C9;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[action.editImage]}" VerticalAlignment="Center"/></StackPanel></Button>
+          </Grid>
+          <Border Grid.Row="1" Background="{DynamicResource AppSurfaceAltBrush}" CornerRadius="8"
+                  ClipToBounds="True">
+            <!-- ⚠️ v0.5.34：再套一层 Border 专门做裁剪。
+                 原因：`Image` 的 `RenderTransform`（缩放/平移）会让内容**溢出自身 Bounds**，
+                 而 Avalonia 对**子元素的 RenderTransform 溢出**不一定会被上层 Border 裁住
+                 （实测：平移后图片画到了灰区外面）。
+                 这层的职责：把「可查看范围」严格限定为**预览灰区**。 -->
+            <Border ClipToBounds="True">
+              <Grid>
+              <!-- 底图 + 标注层：**必须共用同一个坐标系**。
+                   ⚠️ v0.5.33 关键修正：`Stretch="Uniform"` 的 Image 在 Avalonia 里
+                   **Bounds 会自动收缩为「图片内容矩形」**（实测：400×400 图放 600×300 容器
+                   → Image.Bounds = (150,0,300,300)），而 RegionCanvas 默认铺满容器 (0,0,600,300)。
+                   两者坐标系不同 → 缩放时必然分离（平移时恰好抵消，所以"拖动看着没事"）。
+                   修法：两者都 Stretch 对齐，由代码把画布宽高设成与图片 Bounds 相同
+                   （见 MainView.axaml.cs 的 AlignCanvasToImage）→ 坐标系严格一致。
+
+                   ⚠️ 必须用 `Stretch` 而**不能**用 `Center`：Center 下未设尺寸的控件
+                   `DesiredSize` 为 0 → 画布变成 0×0 → **工具与滚轮全部失效**
+                   （v0.5.33 踩过：改成 Center 后"编辑不了图片"）。
+                   Stretch 在未对齐时退化为"铺满容器"（仍可交互），对齐后 Grid 会自动居中。 -->
+              <Image x:Name="PreviewLayer" Source="{CompiledBinding PreviewImage}" Stretch="Uniform"
+                     HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+              <!-- P0-6 修复：流式「部分图」。开了流式并付了开销却看不到图 = UI 没接。
+                   叠在底图之上（部分图比旧底图新），无部分图时不占位、不拦点击。 -->
+              <Image x:Name="PartialLayer" Source="{CompiledBinding PartialImage}" Stretch="Uniform"
+                     HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                     IsHitTestVisible="False"
+                     IsVisible="{CompiledBinding HasPartialImage}"/>
+              <ctrl:RegionCanvas x:Name="RegionLayer" IsVisible="{CompiledBinding RegionMode}"
+                                 HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                 Tool="{CompiledBinding CanvasTool}"
+                                 BrushColor="{CompiledBinding BrushColor}"
+                                 BrushSize="{CompiledBinding BrushSize}"
+                                 BaseImagePath="{CompiledBinding PreviewPath}"/>
+              </Grid>
+            </Border>
+          </Border>
+          <ItemsControl Grid.Row="2" ItemsSource="{CompiledBinding BatchResults}" Margin="0,10,0,0"
+                        IsVisible="{CompiledBinding HasBatchResults}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <!-- Plan B：项类型是 PreviewThumb（不是 VM）→ 单独声明 x:DataType -->
+              <DataTemplate x:DataType="vm:PreviewThumb">
+                <Button Classes="toolbar" Classes.hoverfx="{Binding $parent[UserControl].DataContext.EnableHoverAnimation}" Margin="0,0,6,6" Padding="8,5" Click="OnThumbClick">
+                  <StackPanel Spacing="2">
+                    <TextBlock Text="{CompiledBinding ShortPrompt}" FontSize="11"/>
+                    <TextBlock Text="{CompiledBinding CostText}" FontSize="10"
+                               Foreground="{DynamicResource AppCostBrush}"/>
+                  </StackPanel>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <!-- P4/P10 + v5.25.0：编辑工具栏改为**固定两行**，高度恒定不跳动、
+               每行 WrapPanel 自动换行 → 「用标注编辑」不再被裁 / 不再压到下方按钮。 -->
+          <Border Grid.Row="3" Height="{x:Static ui:UiMetrics.AnnotationToolbarHeightWide}" Margin="0,8,0,0">
+            <Grid>
+              <TextBlock Text="{CompiledBinding L[region.enterHint]}"
+                         Classes="dim" VerticalAlignment="Center" TextWrapping="Wrap"
+                         IsVisible="{Binding !RegionMode}"/>
+              <Grid IsVisible="{CompiledBinding RegionMode}" VerticalAlignment="Center"
+                    RowDefinitions="Auto,Auto,Auto" RowSpacing="4">
+                <!-- ⚠️ v0.5.39 用户要求：工具条改成**三行**。
+                     原先两行时，切到马克笔会出现「粗细」控件 → 行 1 变宽 → WrapPanel 换行
+                     → 与行 2 挤成一团（用户报"图标显示越界，而且挤成一团"）。
+                     三行后每行职责单一、横向不再溢出：
+                       行 1 = 工具 / 粗细
+                       行 2 = 调色板 / 撤销 / 重做
+                       行 3 = 缩放 / 图片居中 / 清除 / 已标注数 / 用标注编辑 -->
+                <!-- 行 1：工具 / 粗细（按工具显隐） -->
+                <WrapPanel Grid.Row="0" Orientation="Horizontal"
+                           VerticalAlignment="Center">
+                  <TextBlock Text="{CompiledBinding L[region.tool]}" Classes="dim" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                  <ComboBox ItemsSource="{CompiledBinding ToolNames}" SelectedIndex="{CompiledBinding ToolIndex}"
+                            Width="92" Height="{x:Static ui:UiMetrics.FieldHeightCompact}"
+                            VerticalAlignment="Center" Margin="0,0,12,0"/>
+                  <!-- 需求⑥：粗细条只对**马克笔/橡皮**有意义（方框/圆圈是区域语义）→ 按工具显隐 -->
+                  <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                              IsVisible="{CompiledBinding ToolUsesBrushSize}">
+                    <TextBlock Text="{CompiledBinding L[region.brushSize]}" Classes="dim" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <Slider Minimum="{CompiledBinding BrushSizeMin}" Maximum="{CompiledBinding BrushSizeMax}"
+                            Value="{CompiledBinding BrushSize}" Width="96"
+                            VerticalAlignment="Center" Margin="0,0,8,0"
+                            ToolTip.Tip="{CompiledBinding L[region.brushTip]}"/>
+                    <TextBlock Text="{CompiledBinding BrushSizeText}" Classes="dim" Width="40"
+                               VerticalAlignment="Center" Margin="0,0,10,0"/>
+                  </StackPanel>
+                </WrapPanel>
+                <!-- 行 2：调色板 / 撤销 / 重做 -->
+                <WrapPanel Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Center">
+                  <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" VerticalAlignment="Center" Margin="0,0,8,0" Command="{CompiledBinding OpenPaletteCommand}" ctrl:Help.Tip="{CompiledBinding L[region.paletteTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE40A;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[region.palette]}" VerticalAlignment="Center"/></StackPanel></Button>
+                  <!-- 需求②：编辑动作历史 -->
+                  <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" VerticalAlignment="Center" Margin="0,0,4,0" Click="OnUndoRegionClick" ctrl:Help.Tip="{CompiledBinding L[region.undoTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE166;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[region.undo]}" VerticalAlignment="Center"/></StackPanel></Button>
+                  <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" VerticalAlignment="Center" Click="OnRedoRegionClick" ctrl:Help.Tip="{CompiledBinding L[region.redoTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE15A;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[region.redo]}" VerticalAlignment="Center"/></StackPanel></Button>
+                </WrapPanel>
+                <!-- 行 3：缩放 / 居中 / 清除 / 已标注数 / 用标注编辑 -->
+                <WrapPanel Grid.Row="2" Orientation="Horizontal" VerticalAlignment="Center">
+                  <TextBlock Text="{CompiledBinding L[region.zoom]}" Classes="dim" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                  <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" VerticalAlignment="Center" Click="OnZoomOutClick" Margin="0,0,4,0" ctrl:Help.Tip="{CompiledBinding L[region.zoomOutTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon small" Text="&#xE900;"/><TextBlock Classes="iconText small" Text="−" VerticalAlignment="Center"/></StackPanel></Button>
+                  <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" VerticalAlignment="Center" Click="OnZoomInClick" Margin="0,0,4,0" ctrl:Help.Tip="{CompiledBinding L[region.zoomInTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon small" Text="&#xE8FF;"/><TextBlock Classes="iconText small" Text="＋" VerticalAlignment="Center"/></StackPanel></Button>
+                  <!-- 需求②：图片居中（回到预览框中央） -->
+                  <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" VerticalAlignment="Center" Click="OnCenterRegionClick" Margin="0,0,4,0" ctrl:Help.Tip="{CompiledBinding L[region.centerTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE3B4;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[region.center]}" VerticalAlignment="Center"/></StackPanel></Button>
+                  <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" VerticalAlignment="Center" Click="OnClearRegionsClick" Margin="0,0,10,0" ctrl:Help.Tip="{CompiledBinding L[region.clearTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE872;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[region.clear]}" VerticalAlignment="Center"/></StackPanel></Button>
+                  <!-- v5.28.0：常驻显示已标注数量 + 未圈画时禁用（避免点了才被告知） -->
+                  <TextBlock Text="{CompiledBinding RegionCountText}" Classes="dim"
+                             VerticalAlignment="Center" Margin="0,0,8,0"/>
+                  <Button Classes="toolbar accent" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" VerticalAlignment="Center" MinWidth="100" Click="OnAnnotatedEditClick" IsEnabled="{CompiledBinding CanEditWithRegions}" ToolTip.Tip="{CompiledBinding RegionEditTip}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE664;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[region.editWithRegions]}" VerticalAlignment="Center"/></StackPanel></Button>
+                </WrapPanel>
+              </Grid>
+            </Grid>
+          </Border>
+        </Grid>
+      </Border>
+
+      <Grid Grid.Column="2" RowDefinitions="*,*">
+        <Border Grid.Row="0" Classes="card" Padding="14" Margin="0,0,0,6">
+          <!-- Plan A：历史/累计卡片已抽成 Sections/HistoryPanel（两套布局共用）。
+               差异（列表高度、是否显示"未归类"）由依赖属性吸收：
+                 · 宽屏 ListHeight=NaN → 列表自适应撑满
+                 · 宽屏 ShowUnknownCost=True → 显示「含未归类旧数据」
+               事件由 MainView 挂载（见 MainView.axaml.cs WireHistoryPanel），
+               以保留原有副作用（读 SelectedItems / 清选择）。 -->
+          <sections:HistoryPanel x:Name="WideHistory" ListHeight="NaN" ShowUnknownCost="True"/>
+        </Border>
+        <Border Grid.Row="1" Classes="card" Padding="14" Margin="0,6,0,0">
+          <!-- v0.5.29 修回归：标题必须留在 ScrollViewer**外面**，否则它跟着日志一起滚动
+               （原结构就是 Auto/* 两行：标题在 row0、滚动区在 row1）。
+               标题不能放进 Section —— 那会把 Section 整体包进滚动区。 -->
+          <Grid RowDefinitions="Auto,*">
+            <TextBlock Grid.Row="0" Text="{CompiledBinding L[msg.title]}" Classes="section" Margin="0,0,0,8"/>
+            <ScrollViewer Grid.Row="1" x:Name="MessageScroll">
+              <sections:MessagePanel/>
+            </ScrollViewer>
+          </Grid>
+        </Border>
+      </Grid>
+    </Grid>
+
+    <!-- ===== 窄屏布局（手机竖屏）：预览优先 → 操作 → 参数 ===== -->
+    <ScrollViewer Grid.Row="1" Margin="0,12,0,12" IsVisible="{Binding !IsWideLayout}">
+      <StackPanel Spacing="10">
+        <!-- ① 预览 + 编辑工具栏（最常用，放最上面） -->
+        <Border Classes="card" Padding="12">
+          <!-- P4：Row2 高度恒定（非编辑模式显示引导文案）；看图/保存已移到底栏 →
+               行数由 4 减为 3（原 Row3 放的是「系统看图器/保存到相册」）。 -->
+          <Grid RowDefinitions="Auto,320,Auto">
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,8">
+              <TextBlock Grid.Column="0" Text="{CompiledBinding L[action.preview]}" Classes="section"/>
+              <TextBlock Grid.Column="1" Text="{CompiledBinding PreviewPath}" Classes="dim"
+                         TextTrimming="CharacterEllipsis" HorizontalAlignment="Right"
+                         TextAlignment="Right" Margin="8,0,8,0"/>
+              <Button Grid.Column="2" Classes="toolbar accent" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" IsEnabled="{CompiledBinding CanAnnotate}" Click="OnToggleRegionClick" ctrl:Help.Tip="{CompiledBinding L[region.toggleTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE3C9;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[action.editImage]}" VerticalAlignment="Center"/></StackPanel></Button>
+            </Grid>
+            <Border Grid.Row="1" Background="{DynamicResource AppSurfaceAltBrush}" CornerRadius="8"
+                    ClipToBounds="True">
+              <!-- 同宽屏：再套一层专门裁剪（RenderTransform 溢出需要显式裁） -->
+              <Border ClipToBounds="True">
+                <Grid>
+                <!-- 底图与画布共享坐标系（同宽屏说明：必须用 Stretch，Center 会变 0 尺寸） -->
+                <Image x:Name="PreviewLayerNarrow" Source="{CompiledBinding PreviewImage}"
+                       Stretch="Uniform" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+                <!-- P0-6 修复：流式「部分图」（同宽屏说明） -->
+                <Image x:Name="PartialLayerNarrow" Source="{CompiledBinding PartialImage}" Stretch="Uniform"
+                       HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                       IsHitTestVisible="False"
+                       IsVisible="{CompiledBinding HasPartialImage}"/>
+                <ctrl:RegionCanvas x:Name="RegionLayerNarrow" IsVisible="{CompiledBinding RegionMode}"
+                                   HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                   Tool="{CompiledBinding CanvasTool}"
+                                   BrushColor="{CompiledBinding BrushColor}"
+                                   BrushSize="{CompiledBinding BrushSize}"
+                                   BaseImagePath="{CompiledBinding PreviewPath}"/>
+                </Grid>
+              </Border>
+            </Border>
+            <!-- P4/P10：工具栏区域**高度恒定**（避免点开时预览跳动）+ WrapPanel 自动换行。
+                 v5.25.0：高度 88 → 96（容纳 2 行按钮，原来 88 会把第 2 行底部裁掉） -->
+            <Border Grid.Row="2" Height="{x:Static ui:UiMetrics.AnnotationToolbarHeightNarrow}" Margin="0,8,0,0">
+              <Grid>
+                <TextBlock Text="{CompiledBinding L[region.enterHintShort]}" Classes="dim"
+                           VerticalAlignment="Center" TextWrapping="Wrap"
+                           IsVisible="{Binding !RegionMode}"/>
+                <WrapPanel Orientation="Horizontal" VerticalAlignment="Top"
+                           IsVisible="{CompiledBinding RegionMode}">
+                  <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,3,8,3">
+                    <TextBlock Text="{CompiledBinding L[region.tool]}" Classes="dim" VerticalAlignment="Center"/>
+                    <ComboBox ItemsSource="{CompiledBinding ToolNames}" SelectedIndex="{CompiledBinding ToolIndex}"
+                              Width="84" MinHeight="{x:Static ui:UiMetrics.FieldHeightCompact}"/>
+                    <!-- 需求⑥：粗细条按工具显隐（与宽屏同步） -->
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                                IsVisible="{CompiledBinding ToolUsesBrushSize}">
+                      <Slider Minimum="{CompiledBinding BrushSizeMin}" Maximum="{CompiledBinding BrushSizeMax}"
+                              Value="{CompiledBinding BrushSize}" Width="100" VerticalAlignment="Center"/>
+                      <TextBlock Text="{CompiledBinding BrushSizeText}" Classes="dim" Width="40"
+                                 VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Command="{CompiledBinding OpenPaletteCommand}" ctrl:Help.Tip="{CompiledBinding L[region.paletteTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE40A;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[region.palette]}" VerticalAlignment="Center"/></StackPanel></Button>
+                    <!-- 需求②：撤销/重做（与宽屏同步） -->
+                    <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Click="OnUndoRegionClick" ctrl:Help.Tip="{CompiledBinding L[region.undoTipShort]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE166;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[region.undo]}" VerticalAlignment="Center"/></StackPanel></Button>
+                    <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Click="OnRedoRegionClick" ctrl:Help.Tip="{CompiledBinding L[region.redoTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE15A;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[region.redo]}" VerticalAlignment="Center"/></StackPanel></Button>
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,3,0,3">
+                    <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Click="OnZoomOutClick" ctrl:Help.Tip="{CompiledBinding L[region.zoomOutTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon small" Text="&#xE900;"/><TextBlock Classes="iconText small" Text="−" VerticalAlignment="Center"/></StackPanel></Button>
+                    <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Click="OnZoomInClick" ctrl:Help.Tip="{CompiledBinding L[region.zoomInTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon small" Text="&#xE8FF;"/><TextBlock Classes="iconText small" Text="＋" VerticalAlignment="Center"/></StackPanel></Button>
+                    <!-- 需求②：图片居中（回到预览框中央） -->
+                    <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Click="OnCenterRegionClick" ctrl:Help.Tip="{CompiledBinding L[region.centerTipShort]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE3B4;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[region.center]}" VerticalAlignment="Center"/></StackPanel></Button>
+                    <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Click="OnClearRegionsClick" ctrl:Help.Tip="{CompiledBinding L[region.clearTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE872;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[region.clear]}" VerticalAlignment="Center"/></StackPanel></Button>
+                    <!-- v5.28.0：常驻显示已标注数量 + 未圈画时禁用（与宽屏布局同步） -->
+                    <TextBlock Text="{CompiledBinding RegionCountText}" Classes="dim"
+                               VerticalAlignment="Center"/>
+                    <Button Classes="toolbar accent" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" MinWidth="96" Click="OnAnnotatedEditClick" IsEnabled="{CompiledBinding CanEditWithRegions}" ToolTip.Tip="{CompiledBinding RegionEditTip}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE664;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[region.editWithRegions]}" VerticalAlignment="Center"/></StackPanel></Button>
+                  </StackPanel>
+                </WrapPanel>
+              </Grid>
+            </Border>
+          </Grid>
+        </Border>
+
+        <!-- ② 主操作：生成 / 编辑 / 导入 / 撤回 -->
+        <Border Classes="card" Padding="12">
+          <StackPanel Spacing="8">
+            <!-- 提示词标题行：「生成提示」+「提取」放这里（与宽屏同构，避免操作按钮折行） -->
+            <Grid ColumnDefinitions="Auto,*">
+              <TextBlock Grid.Column="0" Text="{CompiledBinding L[param.prompt]}" Classes="section" VerticalAlignment="Center"/>
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6"
+                          HorizontalAlignment="Right">
+                <!-- 即梦专属：素材提取（商品 6 种 / 元素 4 种） -->
+                <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}"
+                        Command="{CompiledBinding OpenExtractCommand}"
+                        IsVisible="{CompiledBinding IsJimengProvider}"
+                        ctrl:Help.Tip="{CompiledBinding L[param.extractTipJimengLong]}">
+                  <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <TextBlock Classes="icon small" Text="&#xE8B7;"/>
+                    <TextBlock Classes="iconText small" Text="{CompiledBinding L[param.extract]}" FontSize="12" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
+                <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}"
+                        Command="{CompiledBinding OpenGuideCommand}"
+                        ctrl:Help.Tip="{CompiledBinding L[param.promptGuideTipLong]}">
+                  <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <TextBlock Classes="icon small" Text="&#xEA19;"/>
+                    <TextBlock Classes="iconText small" Text="{CompiledBinding L[param.genPrompt]}" FontSize="12" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+            </Grid>
+            <TextBox Text="{CompiledBinding Prompt}" AcceptsReturn="True" Height="80"
+                     TextWrapping="Wrap" CornerRadius="8"
+                     PlaceholderText="{CompiledBinding L[param.promptPlaceholder]}"/>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Classes="accent" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Command="{CompiledBinding GenerateCommand}" IsEnabled="{CompiledBinding CanRun}" ToolTip.Tip="{CompiledBinding GenerateTip}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE037;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[action.generate]}" VerticalAlignment="Center"/></StackPanel></Button>
+              <Button Command="{CompiledBinding EditCommand}" IsEnabled="{CompiledBinding CanRun}" Classes="" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" ToolTip.Tip="{CompiledBinding EditTip}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE3C9;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[action.edit]}" VerticalAlignment="Center"/></StackPanel></Button>
+              <Button Command="{CompiledBinding PolishPromptCommand}" Classes="" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" ctrl:Help.Tip="{CompiledBinding L[param.genPromptTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE664;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[param.polish]}" VerticalAlignment="Center"/></StackPanel></Button>
+              <Button Command="{CompiledBinding UndoCommand}" Classes="" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" ctrl:Help.Tip="{CompiledBinding L[bottom.undoTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE166;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[bottom.undo]}" VerticalAlignment="Center"/></StackPanel></Button>
+              <Button Click="OnClearPromptClick" Classes="" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" ctrl:Help.Tip="{CompiledBinding L[param.clearTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE872;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[param.clear]}" VerticalAlignment="Center"/></StackPanel></Button>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- ③ 生成参数（折叠在下方） -->
+        <Border Classes="card" Padding="12">
+          <StackPanel Spacing="10">
+            <TextBlock Text="{CompiledBinding L[param.genParams]}" Classes="section"/>
+            <Grid ColumnDefinitions="64,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+              <TextBlock Grid.Row="0" Grid.Column="0" Text="{CompiledBinding L[param.model]}" FontSize="13"
+                         VerticalAlignment="Center" Margin="0,0,8,8"
+                         Foreground="{DynamicResource AppTextSubBrush}"/>
+              <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{CompiledBinding ModelChoices}"
+                        SelectedItem="{CompiledBinding Model}" HorizontalAlignment="Stretch"
+                        MinHeight="{x:Static ui:UiMetrics.FieldHeightNarrow}" Margin="0,0,0,8"/>
+              <TextBlock Grid.Row="1" Grid.Column="0" Text="{CompiledBinding L[param.quality]}" FontSize="13"
+                         VerticalAlignment="Center" Margin="0,0,8,8"
+                         Foreground="{DynamicResource AppTextSubBrush}"/>
+              <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{CompiledBinding QualityOptions}"
+                        SelectedIndex="{CompiledBinding QualityIndex, Mode=TwoWay}"
+                        HorizontalAlignment="Stretch"
+                        MinHeight="{x:Static ui:UiMetrics.FieldHeightNarrow}" Margin="0,0,0,8"/>
+              <TextBlock Grid.Row="2" Grid.Column="0" Text="{CompiledBinding L[param.aspect]}" FontSize="13"
+                         VerticalAlignment="Center" Margin="0,0,8,8"
+                         Foreground="{DynamicResource AppTextSubBrush}"/>
+              <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{CompiledBinding AspectOptions}"
+                        SelectedIndex="{CompiledBinding AspectIndex, Mode=TwoWay}"
+                        HorizontalAlignment="Stretch"
+                        MinHeight="{x:Static ui:UiMetrics.FieldHeightNarrow}" Margin="0,0,0,8"/>
+              <TextBlock Grid.Row="3" Grid.Column="0" Text="{CompiledBinding L[param.resolution]}" FontSize="13"
+                         VerticalAlignment="Center" Margin="0,0,8,8"
+                         IsVisible="{CompiledBinding HasResolutionTier}"
+                         Foreground="{DynamicResource AppTextSubBrush}"/>
+              <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{CompiledBinding ResolutionOptions}"
+                        SelectedIndex="{CompiledBinding ResolutionIndex, Mode=TwoWay}"
+                        HorizontalAlignment="Stretch"
+                        IsVisible="{CompiledBinding HasResolutionTier}"
+                        MinHeight="{x:Static ui:UiMetrics.FieldHeightNarrow}" Margin="0,0,0,8"/>
+              <TextBlock Grid.Row="4" Grid.Column="0" Text="{CompiledBinding L[param.format]}" FontSize="13"
+                         VerticalAlignment="Center" Margin="0,0,8,0"
+                         Foreground="{DynamicResource AppTextSubBrush}"/>
+              <ComboBox Grid.Row="4" Grid.Column="1" ItemsSource="{CompiledBinding OutputFormatOptions}"
+                        SelectedIndex="{CompiledBinding OutputFormatIndex, Mode=TwoWay}"
+                        HorizontalAlignment="Stretch"
+                        MinHeight="{x:Static ui:UiMetrics.FieldHeightNarrow}"/>
+            </Grid>
+            <Grid ColumnDefinitions="64,*">
+              <TextBlock Grid.Column="0" Text="{CompiledBinding L[param.batch]}" FontSize="13" VerticalAlignment="Center"
+                         Foreground="{DynamicResource AppTextSubBrush}"/>
+              <!-- P8：「离线」复选框已移除（debug 功能，见 设置 → 界面选项） -->
+              <NumericUpDown Grid.Column="1" Value="{CompiledBinding BatchN}" Minimum="1"
+                             Maximum="{CompiledBinding BatchNMax}"
+                             Increment="1" Width="104" MinHeight="{x:Static ui:UiMetrics.FieldHeightNarrow}"
+                             ToolTip.Tip="{CompiledBinding BatchNHint}"/>
+            </Grid>
+            <Border Background="{DynamicResource AppSurfaceAltBrush}" CornerRadius="8" Padding="10,7">
+              <TextBlock Text="{CompiledBinding EstimatedCostText}" FontSize="12"
+                         TextWrapping="Wrap"
+                         Foreground="{DynamicResource AppCostBrush}"/>
+            </Border>
+
+            <!-- v5.27.0：高级参数（与宽屏布局同步；两套布局都必须改，否则手机竖屏看不到） -->
+            <!-- Plan A：与宽屏共用 Sections/AdvancedParamsPanel（改一处两端生效） -->
+            <sections:AdvancedParamsPanel/>
+          </StackPanel>
+        </Border>
+
+        <!-- ④ 历史 + 消息 -->
+        <Border Classes="card" Padding="12">
+          <!-- Plan A：与宽屏共用 Sections/HistoryPanel（改一处两端生效）。
+               窄屏 ListHeight=240（固定）、ShowUnknownCost=False（与改前一致）。 -->
+          <sections:HistoryPanel x:Name="NarrowHistory" ListHeight="240" ShowUnknownCost="False"/>
+        </Border>
+
+        <Border Classes="card" Padding="12">
+          <!-- v0.5.29 修回归：标题留在 ScrollViewer 外（与宽屏一致），
+               否则「消息」二字会跟着日志一起滚动。 -->
+          <Grid RowDefinitions="Auto,180">
+            <TextBlock Grid.Row="0" Text="{CompiledBinding L[msg.title]}" Classes="section" Margin="0,0,0,8"/>
+            <ScrollViewer Grid.Row="1">
+              <sections:MessagePanel/>
+            </ScrollViewer>
+          </Grid>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+
+
+    <!-- ===== 底栏（v0.5.36）：左侧放「看图/保存」等**图片级**操作；版本号固定最右 =====
+         用户要求（v0.5.36）：
+           · 去掉「撤回 / 重新预览 / 设置」按钮（设置入口在顶栏已有，撤回/重新预览另有路径）；
+           · 未配置提示文案改为指向「右上角」（设置按钮在顶栏右侧）；
+           · 版本号放到**最右侧**。 -->
+    <Border Grid.Row="2" Classes="card" Padding="10,8">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <!-- 左：图片级操作（不依赖 provider，始终可用） -->
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Button Classes="toolbar accent" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Command="{CompiledBinding OpenInViewerCommand}" ctrl:Help.Tip="{CompiledBinding L[bottom.viewerTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE3F4;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[bottom.viewer]}" VerticalAlignment="Center"/></StackPanel></Button>
+          <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Command="{CompiledBinding SaveToGalleryCommand}" ctrl:Help.Tip="{CompiledBinding L[bottom.saveGalleryTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE171;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[bottom.saveGallery]}" VerticalAlignment="Center"/></StackPanel></Button>
+          <!-- v0.5.38：补上「在文件管理器中显示」入口 —— 该功能早已实现
+               （PlatformStorage.RevealInFileManagerAsync），但一直没有 UI 调用它
+               （review 债务 #2：有实现无入口）。非 Windows 会如实提示"不支持"。 -->
+          <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Command="{CompiledBinding RevealInFileManagerCommand}" ctrl:Help.Tip="{CompiledBinding L[bottom.revealTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE2C8;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[bottom.reveal]}" VerticalAlignment="Center"/></StackPanel></Button>
+          <!-- 需求③：蒙版用法说明。放在底栏 —— 标注工具条是**固定高度**，
+               在中栏必然被换行裁掉（用户报"被遮挡"）。 -->
+          <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Command="{CompiledBinding ShowMaskHelpCommand}" ctrl:Help.Tip="{CompiledBinding L[bottom.maskHelpTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE88E;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[bottom.maskHelp]}" VerticalAlignment="Center"/></StackPanel></Button>
+        </StackPanel>
+
+        <!-- 中：左侧原本的"未配置"提示（保持可达） -->
+        <Border Grid.Column="1" Background="{DynamicResource AppAccentSoftBrush}"
+                CornerRadius="8" Padding="10,6" Margin="10,0"
+                HorizontalAlignment="Left" VerticalAlignment="Center"
+                IsVisible="{CompiledBinding NeedsSetup}">
+          <TextBlock Text="{CompiledBinding SetupHint}" FontSize="12.5" VerticalAlignment="Center"
+                     Foreground="{DynamicResource AppAccentBrush}"/>
+        </Border>
+
+        <!-- 右：快捷键 / 数据目录 + **版本号固定最右**（用户要求）。
+             「设置」按钮已去掉 —— 顶栏右上角已有。 -->
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Command="{CompiledBinding ShowShortcutsCommand}" ctrl:Help.Tip="{CompiledBinding L[bottom.shortcutsTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE312;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[bottom.shortcuts]}" VerticalAlignment="Center"/></StackPanel></Button>
+          <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Command="{CompiledBinding ShowDataDirCommand}" ctrl:Help.Tip="{CompiledBinding L[bottom.dataDirTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE2C8;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[bottom.dataDir]}" VerticalAlignment="Center"/></StackPanel></Button>
+          <TextBlock Text="{CompiledBinding VersionText}" Classes="dim" FontSize="11"
+                     VerticalAlignment="Center" Margin="4,0,2,0"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- ===== P11：破坏性操作确认浮层 ===== -->
+    <Border Grid.Row="0" Grid.RowSpan="3" Background="#66000000"
+            IsVisible="{CompiledBinding ConfirmOpen}">
+      <Border Classes="card" Width="460" MaxWidth="560" HorizontalAlignment="Center"
+              VerticalAlignment="Center" Padding="20">
+        <StackPanel Spacing="12">
+          <TextBlock Text="{CompiledBinding ConfirmTitle}" FontSize="17" FontWeight="SemiBold"/>
+          <TextBlock Text="{CompiledBinding ConfirmMessage}" TextWrapping="Wrap" FontSize="13"
+                     Foreground="{DynamicResource AppTextBrush}"/>
+          <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right"
+                      Margin="0,8,0,0">
+            <Button Command="{CompiledBinding ConfirmCancelCommand}" Classes="" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" ctrl:Help.Tip="{CompiledBinding L[confirm.discardTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon small" Text="&#xE5CD;"/><TextBlock Classes="iconText small" Text="{CompiledBinding L[common.cancel]}" VerticalAlignment="Center"/></StackPanel></Button>
+            <Button Classes="accent" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Command="{CompiledBinding ConfirmOkCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                <TextBlock Classes="icon" Text="&#xE5CA;"/>
+                <TextBlock Classes="iconText" Text="{CompiledBinding ConfirmOkText}" VerticalAlignment="Center"/>
+              </StackPanel>
+            </Button>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Border>
+
+    <Border Grid.Row="0" Grid.RowSpan="3" Background="#66000000" IsVisible="{CompiledBinding SettingsOpen}">
+      <Border Classes="card" Width="540" MaxHeight="640" HorizontalAlignment="Center"
+              VerticalAlignment="Center" Padding="20">
+        <Grid RowDefinitions="Auto,*,Auto">
+          <TextBlock Grid.Row="0" Text="{CompiledBinding L[settings.title]}" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,14"/>
+          <ScrollViewer Grid.Row="1">
+            <StackPanel Spacing="14">
+              <TextBlock Text="{CompiledBinding L[settings.api]}" Classes="section"/>
+              <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Provider" FontSize="13"
+                           VerticalAlignment="Center" Foreground="{DynamicResource AppTextSubBrush}"/>
+                <ComboBox Grid.Row="0" Grid.Column="1" Width="220" MinHeight="{x:Static ui:UiMetrics.FieldHeightCompact}"
+                          HorizontalAlignment="Left" ItemsSource="{CompiledBinding Providers}"
+                          SelectedItem="{CompiledBinding SelectedProvider, Mode=TwoWay}"/>
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="API Key" FontSize="13"
+                           VerticalAlignment="Center" Margin="0,10,0,0"
+                           Foreground="{DynamicResource AppTextSubBrush}"/>
+                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="8" Margin="0,10,0,0">
+                  <TextBox Text="{CompiledBinding ApiKeyInput}" PasswordChar="•" Width="248"
+                           PlaceholderText="{CompiledBinding KeyHint}"/>
+                  <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Command="{CompiledBinding TestKeyCommand}"
+                          IsEnabled="{Binding !KeyChecking}" ctrl:Help.Tip="{CompiledBinding L[settings.testKeyTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon small" Text="&#xE5CA;"/><TextBlock Classes="iconText small" Text="{CompiledBinding L[settings.testKey]}" VerticalAlignment="Center"/></StackPanel></Button>
+                </StackPanel>
+                <!-- 即梦（火山引擎）专属：第二把密钥 SecretAccessKey（AK/SK 签名） -->
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Secret (SK)" FontSize="13"
+                           VerticalAlignment="Center" Margin="0,10,0,0"
+                           IsVisible="{CompiledBinding NeedsSecretKey}"
+                           Foreground="{DynamicResource AppTextSubBrush}"/>
+                <StackPanel Grid.Row="2" Grid.Column="1" Margin="0,10,0,0"
+                            IsVisible="{CompiledBinding NeedsSecretKey}">
+                  <TextBox Text="{CompiledBinding SecretKeyInput}" PasswordChar="•" Width="380"
+                           HorizontalAlignment="Left"
+                           PlaceholderText="{CompiledBinding L[settings.secretAccessKey]}"
+                           ctrl:Help.Tip="{CompiledBinding L[settings.jimengAkSk]}"/>
+                  <TextBlock Classes="dim" FontSize="11" Margin="0,3,0,0"
+                             Text="{CompiledBinding L[settings.jimengWhere]}"/>
+                </StackPanel>
+                <TextBlock Grid.Row="3" Grid.Column="1" Classes="dim" Margin="0,4,0,0"
+                           Text="{CompiledBinding KeyStatusText, StringFormat='当前：{0}'}"/>
+                <TextBlock Grid.Row="2" Grid.Column="1" Margin="0,26,0,0"
+                           Text="{CompiledBinding KeyCheckStatus}" TextWrapping="Wrap"
+                           Foreground="{DynamicResource AppWarnBrush}"/>
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="{CompiledBinding L[settings.endpoint]}" FontSize="13"
+                           VerticalAlignment="Center" Margin="0,10,0,0"
+                           Foreground="{DynamicResource AppTextSubBrush}"/>
+                <StackPanel Grid.Row="4" Grid.Column="1" Spacing="4" Margin="0,10,0,0">
+                  <TextBox Text="{CompiledBinding BaseUrlInput}" Width="380" HorizontalAlignment="Left"
+                           PlaceholderText="{CompiledBinding L[settings.endpointHint]}"
+                           ctrl:Help.Tip="{CompiledBinding L[settings.endpointTipQwen]}"/>
+                  <TextBlock Classes="dim" FontSize="11" TextWrapping="Wrap" MaxWidth="380"
+                             Text="{CompiledBinding L[settings.endpointWarnQwen]}"/>
+                </StackPanel>
+              </Grid>
+              <Rectangle Height="1" Fill="{DynamicResource AppBorderBrush}"/>
+              <TextBlock Text="{CompiledBinding L[settings.polish]}" Classes="section"/>
+              <StackPanel Spacing="8">
+                <TextBox Text="{CompiledBinding PolishBaseInput}"
+                         PlaceholderText="{CompiledBinding L[settings.endpointExample]}"/>
+                <TextBox Text="{CompiledBinding PolishModelInput}" PlaceholderText="{CompiledBinding L[settings.modelExample]}"/>
+                <TextBox Text="{CompiledBinding PolishKeyInput}" PasswordChar="•"
+                         PlaceholderText="{CompiledBinding L[settings.polishKeyHint]}"/>
+              </StackPanel>
+              <Rectangle Height="1" Fill="{DynamicResource AppBorderBrush}"/>
+
+              <TextBlock Text="{CompiledBinding L[settings.uiOptions]}" Classes="section"/>
+              <StackPanel Spacing="8">
+                <!-- v0.5.37：删除「显示按钮图标」开关 ——
+                     图标已改为**内嵌字体**（Material Symbols 静态子集），
+                     在桌面与 Android 上都能显示，不再需要"关掉图标"的退路。
+                     ⚠️ `AppConfig.UseIcons` 字段**保留**（config.json 与 legacy 的 1:1 契约）。 -->
+                <CheckBox Content="{CompiledBinding L[settings.darkTheme]}"
+                          IsChecked="{CompiledBinding DarkTheme}"
+                          ctrl:Help.Tip="{CompiledBinding L[settings.darkTip]}"/>
+                <!-- v5.24.0 用户要求：悬停动画与悬停说明均可开关 -->
+                <CheckBox Content="{CompiledBinding L[settings.hoverAnim]}"
+                          IsChecked="{CompiledBinding EnableHoverAnimation}"
+                          ctrl:Help.Tip="{CompiledBinding L[settings.hoverAnimTip]}"/>
+                <CheckBox Content="{CompiledBinding L[settings.tooltips]}"
+                          IsChecked="{CompiledBinding EnableToolTips}"
+                          ctrl:Help.Tip="{CompiledBinding L[settings.tooltipsTip]}"/>
+
+                <!-- v0.5.40 多语言：中 / 英 / 日，**即时生效**（无需重启）。
+                     ⚠️ 用索引器绑定 Index 而不是字符串，避免"显示名"与配置值耦合。
+                     ⚠️ 这里的选项名用**各自语言的原生写法**（不翻译）—— 用户看不懂当前语言时
+                        也能认出自己的语言。 -->
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <TextBlock Text="{CompiledBinding L[settings.language]}"
+                             VerticalAlignment="Center" Classes="dim"/>
+                  <ComboBox x:Name="LanguageCombo" Width="160"
+                            MinHeight="{x:Static ui:UiMetrics.FieldHeightCompact}"
+                            VerticalAlignment="Center"
+                            ItemsSource="{CompiledBinding LanguageChoices}"
+                            SelectedIndex="{CompiledBinding LanguageIndex, Mode=TwoWay}"
+                            ctrl:Help.Tip="{CompiledBinding L[settings.languageTip]}"/>
+                </StackPanel>
+                <!-- 离线模式（debug）：仅 IMGHUB_DEBUG=1 时显示 -->
+                <CheckBox Content="{CompiledBinding L[settings.offline]}" IsChecked="{CompiledBinding Offline}"
+                          IsVisible="{CompiledBinding ShowDebugOptions}"
+                          ctrl:Help.Tip="{CompiledBinding L[settings.offlineTip]}"/>
+              </StackPanel>
+
+              <Rectangle Height="1" Fill="{DynamicResource AppBorderBrush}"/>
+              <!-- v5.24.0：诊断入口 —— 分级日志落盘在数据目录的 log/ 下 -->
+              <TextBlock Text="{CompiledBinding L[settings.diagLog]}" Classes="section"/>
+              <StackPanel Spacing="6">
+                <TextBlock Text="{CompiledBinding L[settings.diagLogTip]}"
+                           Classes="dim" TextWrapping="Wrap"/>
+                <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" HorizontalAlignment="Left" Command="{CompiledBinding OpenLogDirCommand}" ctrl:Help.Tip="{CompiledBinding L[settings.openLogTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE2C8;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[settings.openLog]}" VerticalAlignment="Center"/></StackPanel></Button>
+              </StackPanel>
+
+              <Rectangle Height="1" Fill="{DynamicResource AppBorderBrush}"/>
+              <TextBlock Text="{CompiledBinding L[bottom.dataDir]}" Classes="section"/>
+              <TextBlock Text="{CompiledBinding HomePath}" Classes="dim mono" TextWrapping="Wrap"/>
+            </StackPanel>
+          </ScrollViewer>
+          <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="10"
+                      HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Command="{CompiledBinding CloseSettingsCommand}" Classes="" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" ctrl:Help.Tip="{CompiledBinding L[confirm.discardTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon small" Text="&#xE5CD;"/><TextBlock Classes="iconText small" Text="{CompiledBinding L[common.cancel]}" VerticalAlignment="Center"/></StackPanel></Button>
+            <Button Classes="accent" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Command="{CompiledBinding SaveSettingsCommand}" ctrl:Help.Tip="{CompiledBinding L[settings.saveAndClose]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon small" Text="&#xE5CA;"/><TextBlock Classes="iconText small" Text="{CompiledBinding L[common.save]}" VerticalAlignment="Center"/></StackPanel></Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+    </Border>
+
+    <Border Grid.Row="0" Grid.RowSpan="3" Background="#66000000" IsVisible="{CompiledBinding PaletteOpen}">
+      <Border Classes="card" Width="420" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="20">
+        <Grid RowDefinitions="Auto,Auto,Auto">
+          <TextBlock Grid.Row="0" Text="{CompiledBinding L[region.palette]}" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,14"/>
+          <ItemsControl Grid.Row="1" ItemsSource="{CompiledBinding PaletteColors}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Button Width="44" Height="44" Margin="4" CornerRadius="8" Background="{Binding}"
+                        BorderBrush="{DynamicResource AppBorderStrongBrush}" BorderThickness="1"
+                        Click="OnPaletteColorClick" Tag="{Binding}" ToolTip.Tip="{Binding}" Classes="" Classes.hoverfx="{Binding $parent[UserControl].DataContext.EnableHoverAnimation}"/>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Command="{CompiledBinding ClosePaletteCommand}" Classes="" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" ctrl:Help.Tip="{CompiledBinding L[settings.closeDialog]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon small" Text="&#xE5CD;"/><TextBlock Classes="iconText small" Text="{CompiledBinding L[common.close]}" VerticalAlignment="Center"/></StackPanel></Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+    </Border>
+
+    <Border Grid.Row="0" Grid.RowSpan="3" Background="#66000000" IsVisible="{CompiledBinding PolishOpen}">
+      <Border Classes="card" Width="560" MaxHeight="520" HorizontalAlignment="Center"
+              VerticalAlignment="Center" Padding="20">
+        <Grid RowDefinitions="Auto,Auto,*,Auto">
+          <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,12">
+            <TextBlock Grid.Column="0" Text="{CompiledBinding L[polish.title]}" FontSize="17" FontWeight="SemiBold"/>
+            <TextBlock Grid.Column="2" Text="{CompiledBinding PolishCounterText}"
+                       Foreground="{DynamicResource AppTextDimBrush}" VerticalAlignment="Center"/>
+          </Grid>
+          <!-- v0.5.31：润色提示词风格（自动跟随生图端点，也可手动指定） -->
+          <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,10">
+            <TextBlock Grid.Column="0" Text="{CompiledBinding L[polish.style]}" FontSize="12.5" VerticalAlignment="Center"
+                       Margin="0,0,8,0" Foreground="{DynamicResource AppTextSubBrush}"/>
+            <ComboBox Grid.Column="1" Width="200" HorizontalAlignment="Left"
+                      ItemsSource="{CompiledBinding PolishStyleNames}"
+                      SelectedIndex="{CompiledBinding PolishStyleIndex, Mode=TwoWay}"
+                      ctrl:Help.Tip="{CompiledBinding L[polish.styleTip]}"/>
+            <Button Grid.Column="2" Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Command="{CompiledBinding OpenGuideCommand}" ctrl:Help.Tip="{CompiledBinding L[polish.guideTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xEA19;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[polish.viewGuide]}" VerticalAlignment="Center"/></StackPanel></Button>
+          </Grid>
+          <Border Grid.Row="2" Background="{DynamicResource AppSurfaceAltBrush}"
+                  CornerRadius="8" Padding="14">
+            <ScrollViewer>
+              <TextBlock Text="{CompiledBinding PolishCurrent}" TextWrapping="Wrap" FontSize="14" LineHeight="24"/>
+            </ScrollViewer>
+          </Border>
+          <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto" Margin="0,16,0,0">
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+              <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Command="{CompiledBinding PolishPrevCommand}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon small" Text="&#xE5C4;"/><TextBlock Classes="iconText small" Text="{CompiledBinding L[common.prev]}" VerticalAlignment="Center"/></StackPanel></Button>
+              <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Command="{CompiledBinding PolishNextCommand}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon small" Text="&#xE5C8;"/><TextBlock Classes="iconText small" Text="{CompiledBinding L[common.next]}" VerticalAlignment="Center"/></StackPanel></Button>
+              <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Command="{CompiledBinding PolishRetryCommand}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE5D5;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[common.regenerate]}" VerticalAlignment="Center"/></StackPanel></Button>
+            </StackPanel>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
+              <Button Command="{CompiledBinding PolishCancelCommand}" Classes="" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" ctrl:Help.Tip="{CompiledBinding L[confirm.discardTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon small" Text="&#xE5CD;"/><TextBlock Classes="iconText small" Text="{CompiledBinding L[common.cancel]}" VerticalAlignment="Center"/></StackPanel></Button>
+              <Button Classes="accent" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Command="{CompiledBinding PolishAcceptCommand}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon small" Text="&#xE5CA;"/><TextBlock Classes="iconText small" Text="{CompiledBinding L[common.useThis]}" VerticalAlignment="Center"/></StackPanel></Button>
+            </StackPanel>
+          </Grid>
+        </Grid>
+      </Border>
+    </Border>
+
+    <!-- ================================================================ 提示词指南浮窗（v0.5.31） -->
+    <!-- 需求：点击「生成提示」弹出浮窗，**用有标签页的浮窗手动切换**两个端点的提示。
+         标签页用横向 ListBox（SelectedIndex 两向绑定 GuideTab）—— 比 TabControl 更好控样式，
+         且与项目既有风格（自绘 ToggleButton 折叠）一致。 -->
+    <Border Grid.Row="0" Grid.RowSpan="3" Background="#66000000" IsVisible="{CompiledBinding GuideOpen}">
+      <Border Classes="card" Width="720" MaxHeight="620" HorizontalAlignment="Center"
+              VerticalAlignment="Center" Padding="20">
+        <Grid RowDefinitions="Auto,Auto,*,Auto">
+          <!-- 标题行 -->
+          <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,4">
+            <TextBlock Grid.Column="0" Text="{CompiledBinding L[guide.title]}" FontSize="17" FontWeight="SemiBold"/>
+            <TextBlock Grid.Column="2" Text="{CompiledBinding GuideActiveHint}" FontSize="12"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource AppTextDimBrush}"/>
+          </Grid>
+
+          <!-- 标签页：手动切换两个端点 -->
+          <ListBox Grid.Row="1" ItemsSource="{CompiledBinding Guides}"
+                   SelectedIndex="{CompiledBinding GuideTab, Mode=TwoWay}"
+                   Margin="0,8,0,10" Background="Transparent" BorderThickness="0">
+            <ListBox.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="6"/>
+              </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <!-- ⚠️ DataTemplate 内 DataContext 是**列表项类型**（Guide），必须先声明 x:DataType，
+                 否则编译绑定无法解析 Title（AGENTS §4.1）。 -->
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="core:PromptGuide+Guide">
+                <TextBlock Text="{CompiledBinding Title}" FontSize="13" Padding="4,2"/>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <!-- 内容区：当前标签页的指南（Markdown 渲染，见 code-behind） -->
+          <Border Grid.Row="2" Background="{DynamicResource AppSurfaceAltBrush}"
+                  CornerRadius="8" Padding="16">
+            <ScrollViewer>
+              <StackPanel x:Name="GuideBody" Spacing="14"/>
+            </ScrollViewer>
+          </Border>
+
+          <!-- 操作区 -->
+          <Grid Grid.Row="3" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
+            <TextBlock Grid.Column="0" Text="{CompiledBinding L[guide.subtitle]}"
+                       FontSize="11.5" VerticalAlignment="Center" TextWrapping="Wrap"
+                       Foreground="{DynamicResource AppTextDimBrush}"/>
+            <Button Grid.Column="1" Classes="accent" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Command="{CompiledBinding CloseGuideCommand}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon small" Text="&#xE5CD;"/><TextBlock Classes="iconText small" Text="{CompiledBinding L[common.close]}" VerticalAlignment="Center"/></StackPanel></Button>
+          </Grid>
+        </Grid>
+      </Border>
+    </Border>
+
+    <!-- ================================================================ 即梦提取浮窗（v0.5.31） -->
+    <!-- 需求：为即梦加一个「提取」按钮 → 弹浮窗选提取类型。
+         标签页 = 两条不同 req_key 的链路（商品 6 种 / 元素 4 种），
+         每类都是文档给定的**预设指令**（逐字），用户只选不改（除"提取饰品"允许换物件名）。 -->
+    <Border Grid.Row="0" Grid.RowSpan="3" Background="#66000000" IsVisible="{CompiledBinding ExtractOpen}">
+      <Border Classes="card" Width="620" MaxHeight="580" HorizontalAlignment="Center"
+              VerticalAlignment="Center" Padding="20">
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
+          <Grid Grid.Row="0" ColumnDefinitions="Auto,*">
+            <TextBlock Grid.Column="0" Text="{CompiledBinding L[extract.title]}" FontSize="17" FontWeight="SemiBold"/>
+          </Grid>
+
+          <!-- 标签页：商品提取 / 元素提取 -->
+          <TabControl Grid.Row="1" Margin="0,10,0,0"
+                      SelectedIndex="{CompiledBinding ExtractTab, Mode=TwoWay}">
+            <TabItem Header="{CompiledBinding L[extract.product]}"/>
+            <TabItem Header="{CompiledBinding L[extract.element]}"/>
+          </TabControl>
+
+          <TextBlock Grid.Row="2" Text="{CompiledBinding ExtractHint}" FontSize="11.5"
+                     TextWrapping="Wrap" Margin="0,10,0,0"
+                     Foreground="{DynamicResource AppTextDimBrush}"/>
+
+          <!-- 预设列表：单选 -->
+          <ListBox Grid.Row="3" ItemsSource="{CompiledBinding ExtractPresets}"
+                   SelectedIndex="{CompiledBinding ExtractPresetIndex, Mode=TwoWay}"
+                   Margin="0,10,0,0" MaxHeight="160">
+            <ListBox.ItemTemplate>
+              <!-- ⚠️ DataTemplate 内 DataContext 是列表项类型 → 必须声明 x:DataType -->
+              <DataTemplate x:DataType="core:JimengExtract+Preset">
+                <StackPanel Spacing="2" Margin="0,2">
+                  <TextBlock Text="{CompiledBinding Name}" FontSize="13" FontWeight="SemiBold"/>
+                  <TextBlock Text="{CompiledBinding Prompt}" FontSize="11.5" TextWrapping="Wrap"
+                             Foreground="{DynamicResource AppTextDimBrush}"/>
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <!-- 可替换物件名（仅"提取饰品"这类预设开放） -->
+          <Grid Grid.Row="4" ColumnDefinitions="Auto,*" Margin="0,10,0,0"
+                IsVisible="{CompiledBinding ExtractAllowsItemName}">
+            <TextBlock Grid.Column="0" Text="{CompiledBinding L[extract.objectName]}" Classes="fieldLabel" Margin="0,0,8,0"
+                       VerticalAlignment="Center"/>
+            <TextBox Grid.Column="1" Text="{CompiledBinding ExtractItemName}"
+                     PlaceholderText="{CompiledBinding L[extract.objectNameTip]}"/>
+          </Grid>
+
+          <Grid Grid.Row="5" ColumnDefinitions="*,Auto" Margin="0,16,0,0">
+            <TextBlock Grid.Column="0" FontSize="11.5" TextWrapping="Wrap"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource AppTextDimBrush}"
+                       Text="{CompiledBinding L[extract.inputTip]}"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+              <Button Classes="toolbar" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Command="{CompiledBinding CloseExtractCommand}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon small" Text="&#xE5CD;"/><TextBlock Classes="iconText small" Text="{CompiledBinding L[common.cancel]}" VerticalAlignment="Center"/></StackPanel></Button>
+              <Button Classes="accent" Classes.hoverfx="{CompiledBinding EnableHoverAnimation}" Command="{CompiledBinding RunExtractCommand}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon" Text="&#xE8B7;"/><TextBlock Classes="iconText" Text="{CompiledBinding L[extract.start]}" VerticalAlignment="Center"/></StackPanel></Button>
+            </StackPanel>
+          </Grid>
+        </Grid>
+      </Border>
+    </Border>
+  </Grid>
+</UserControl>

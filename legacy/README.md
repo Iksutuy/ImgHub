@@ -1,4 +1,7 @@
-# imgagent · v5.17.0
+# imgagent · v5.18.3
+
+> 本 README 的界面截图取自早期版本（`v5.17.0`），功能布局可能略有差异。
+> 当前代码版本见 `impydroid/__init__.py` 的 `__version__`。
 
 在 Android 的 **Termux** 或 **Pydroid 3** 里生成图片、基于本机照片改造、多步迭代、
 终端内预览。全中文界面，TUI 用 Ctrl 组合快捷键。

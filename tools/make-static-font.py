@@ -18,7 +18,7 @@ except ImportError:
     sys.exit(1)
 
 SRC = r"C:\Windows\Fonts\NotoSansSC-VF.ttf"
-OUT = r"D:\Project\imagagent\Imagagent\src\Imgagent.App\Assets\Fonts\NotoSansSC-Regular.ttf"
+OUT = r"D:\Project\imagagent\Imagagent\src\ImgHub.App\Assets\Fonts\NotoSansSC-Regular.ttf"
 
 print("1) 加载可变字体…")
 font = TTFont(SRC)

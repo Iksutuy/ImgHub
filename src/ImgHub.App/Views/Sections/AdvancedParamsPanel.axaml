@@ -1,0 +1,192 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ImgHub.App.ViewModels"
+             xmlns:ui="using:ImgHub.App.Ui"
+             x:Class="ImgHub.App.Views.Sections.AdvancedParamsPanel"
+             x:DataType="vm:MainViewModel">
+  <!--
+    高级参数面板（Plan A / v0.5.28 抽出；v0.5.29 改布局修问题 3）。
+
+    为什么抽：宽屏与窄屏各写了一份「背景 / 压缩 / 审核 / 种子 / 流式 / only / order /
+    ignore / sort」，两套**逐行对应**。抽成 Section 后改一处两端生效。
+
+    ⚠️ v0.5.29 为什么不再用 `Expander` 装内容（问题 3：字段比上面的下拉框窄）：
+       实测（LayoutUpdated 打印实际 Bounds）：
+         Expander=304  →  其内部 StackPanel=270   （模板内边距左右各吃 17px）
+       于是本区字段比主参数区的字段**窄一截**，看起来尺寸不一致（用户报问题 3）。
+       试过三种补偿，**均实测无效**：
+         (1) Expander.Padding=0
+         (2) Style 覆盖 `Expander /template/ ContentPresenter` 的 Padding/Margin
+         (3) 内容 Margin 负值（Avalonia 不支持负 Margin，内容还会被裁）
+
+       最终方案：**用 ToggleButton + IsVisible 自绘折叠**，不用 Expander。
+       内容区直接位于本 UserControl 的 Grid 中 → 宽度由外层容器决定 →
+       与主参数区的字段天然同宽，彻底不受任何模板内边距影响。
+
+    ⚠️ 折叠状态仍绑 VM 的 `AdvancedOpen`（与原来一致，行为不变）。
+  -->
+  <StackPanel Spacing="8">
+    <!-- 标题栏：点它切换展开（自绘，避免 Expander 模板的内边距） -->
+    <!-- 标题栏：点它切换展开（自绘，避免 Expander 模板的内边距）。
+         v0.5.38：加图标（与其它按钮风格统一）。 -->
+    <ToggleButton IsChecked="{CompiledBinding AdvancedOpen}"
+                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                  Padding="10,7" CornerRadius="8"
+                  Background="{DynamicResource AppSurfaceAltBrush}"
+                  BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1"
+                  ToolTip.Tip="{CompiledBinding L[adv.tip]}">
+      <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+        <TextBlock Classes="icon" Text="&#xE429;"/>
+        <TextBlock Classes="iconText" Text="{CompiledBinding L[adv.title]}" VerticalAlignment="Center"/>
+      </StackPanel>
+    </ToggleButton>
+    <!-- 内容：与外层字段同一宽度基准（展开时可见） -->
+    <StackPanel Spacing="8" IsVisible="{CompiledBinding AdvancedOpen}">
+      <Grid ColumnDefinitions="Auto,*">
+        <TextBlock Grid.Column="0" Text="{CompiledBinding L[adv.background]}" Classes="fieldLabel" Margin="0,0,8,0"/>
+        <ComboBox Grid.Column="1" ItemsSource="{CompiledBinding BackgroundOptionsForModel}"
+                  SelectedItem="{CompiledBinding Background}" HorizontalAlignment="Stretch"
+                  ToolTip.Tip="{CompiledBinding L[adv.backgroundTip]}"/>
+      </Grid>
+      <Grid ColumnDefinitions="Auto,*">
+        <TextBlock Grid.Column="0" Text="{CompiledBinding L[adv.compression]}" Classes="fieldLabel" Margin="0,0,8,0"/>
+        <NumericUpDown Grid.Column="1" Value="{CompiledBinding OutputCompression}"
+                       Minimum="0" Maximum="100" Increment="5"
+                       HorizontalAlignment="Stretch"
+                       ToolTip.Tip="{CompiledBinding L[adv.compressionTip]}"/>
+      </Grid>
+      <!-- APIMart 专属：内容审核强度 -->
+      <Grid ColumnDefinitions="Auto,*" IsVisible="{CompiledBinding IsApimartProvider}">
+        <TextBlock Grid.Column="0" Text="{CompiledBinding L[adv.moderation]}" Classes="fieldLabel" Margin="0,0,8,0"/>
+        <ComboBox Grid.Column="1" ItemsSource="{CompiledBinding ModerationOptions}"
+                  SelectedItem="{CompiledBinding Moderation}" HorizontalAlignment="Stretch"
+                  ToolTip.Tip="{CompiledBinding L[adv.moderationTip]}"/>
+      </Grid>
+      <!-- OpenRouter 专属：种子 / 流式 / provider 路由 -->
+      <Grid ColumnDefinitions="Auto,*" IsVisible="{CompiledBinding IsOpenRouterProvider}">
+        <TextBlock Grid.Column="0" Text="{CompiledBinding L[adv.seed]}" Classes="fieldLabel" Margin="0,0,8,0"/>
+        <TextBox Grid.Column="1" Text="{CompiledBinding Seed}"
+                 PlaceholderText="{CompiledBinding L[adv.seedTip]}"/>
+      </Grid>
+      <CheckBox Content="{CompiledBinding L[msg.stream]}" IsChecked="{CompiledBinding Stream}"
+                IsVisible="{CompiledBinding IsOpenRouterProvider}" FontSize="12"
+                ToolTip.Tip="{CompiledBinding L[adv.streamTip]}"/>
+
+      <!-- OpenAI 官方专属（v0.5.31） -->
+      <CheckBox Content="{CompiledBinding L[msg.stream]}" IsChecked="{CompiledBinding Stream}"
+                IsVisible="{CompiledBinding IsOpenAiProvider}" FontSize="12"
+                ToolTip.Tip="{CompiledBinding L[adv.streamTipOpenAI]}"/>
+      <Grid ColumnDefinitions="Auto,*" IsVisible="{CompiledBinding IsOpenAiProvider}">
+        <TextBlock Grid.Column="0" Text="{CompiledBinding L[adv.partialImages]}" Classes="fieldLabel" Margin="0,0,8,0"/>
+        <ComboBox Grid.Column="1" ItemsSource="{CompiledBinding PartialImageCounts}"
+                  SelectedItem="{CompiledBinding PartialImages}" HorizontalAlignment="Stretch"
+                  ToolTip.Tip="{CompiledBinding L[adv.partialImagesTip]}"/>
+      </Grid>
+      <!-- input_fidelity 仅 gpt-image-1 系支持（gpt-image-2 必须省略，文档明确） -->
+      <Grid ColumnDefinitions="Auto,*" IsVisible="{CompiledBinding SupportsInputFidelity}">
+        <TextBlock Grid.Column="0" Text="{CompiledBinding L[adv.inputFidelity]}" Classes="fieldLabel" Margin="0,0,8,0"/>
+        <ComboBox Grid.Column="1" ItemsSource="{CompiledBinding InputFidelityOptions}"
+                  SelectedItem="{CompiledBinding InputFidelity}" HorizontalAlignment="Stretch"
+                  ToolTip.Tip="{CompiledBinding L[adv.inputFidelityTip]}"/>
+      </Grid>
+      <!-- dall-e-3 专属：style -->
+      <Grid ColumnDefinitions="Auto,*" IsVisible="{CompiledBinding IsDallE3Model}">
+        <TextBlock Grid.Column="0" Text="{CompiledBinding L[adv.style]}" Classes="fieldLabel" Margin="0,0,8,0"/>
+        <ComboBox Grid.Column="1" ItemsSource="{CompiledBinding StyleOptions}"
+                  SelectedItem="{CompiledBinding Style}" HorizontalAlignment="Stretch"
+                  ToolTip.Tip="{CompiledBinding L[adv.styleTip]}"/>
+      </Grid>
+
+      <!-- 千问 DashScope 专属（v0.5.31） -->
+      <Grid ColumnDefinitions="Auto,*" IsVisible="{CompiledBinding IsDashScopeProvider}">
+        <TextBlock Grid.Column="0" Text="{CompiledBinding L[adv.negativePrompt]}" Classes="fieldLabel" Margin="0,0,8,0"/>
+        <TextBox Grid.Column="1" Text="{CompiledBinding NegativePrompt}"
+                 PlaceholderText="{CompiledBinding L[adv.negativePromptTip]}"/>
+      </Grid>
+      <CheckBox Content="{CompiledBinding L[adv.promptExtend]}" IsChecked="{CompiledBinding PromptExtend}"
+                IsVisible="{CompiledBinding IsDashScopeProvider}" FontSize="12"
+                ToolTip.Tip="{CompiledBinding L[adv.promptExtendTip]}"/>
+      <Grid ColumnDefinitions="Auto,*" IsVisible="{CompiledBinding IsDashScopeProvider}">
+        <TextBlock Grid.Column="0" Text="{CompiledBinding L[adv.extendMode]}" Classes="fieldLabel" Margin="0,0,8,0"/>
+        <ComboBox Grid.Column="1" ItemsSource="{CompiledBinding PromptExtendModeOptions}"
+                  SelectedItem="{CompiledBinding PromptExtendMode}" HorizontalAlignment="Stretch"
+                  ToolTip.Tip="{CompiledBinding L[adv.extendModeTip]}"/>
+      </Grid>
+      <CheckBox Content="{CompiledBinding L[adv.watermark]}" IsChecked="{CompiledBinding Watermark}"
+                IsVisible="{CompiledBinding IsDashScopeProvider}" FontSize="12"
+                ToolTip.Tip="{CompiledBinding L[adv.watermarkTip]}"/>
+
+      <!-- ==================== 即梦（火山引擎）专属 ==================== -->
+      <TextBlock Text="{CompiledBinding L[adv.jimeng]}" Classes="fieldLabel" FontWeight="SemiBold"
+                 Margin="0,4,0,0" IsVisible="{CompiledBinding IsJimengProvider}"/>
+      <Grid ColumnDefinitions="Auto,*" IsVisible="{CompiledBinding IsJimengProvider}">
+        <TextBlock Grid.Column="0" Text="{CompiledBinding L[adv.textWeight]}" Classes="fieldLabel" Margin="0,0,8,0"/>
+        <NumericUpDown Grid.Column="1" Value="{CompiledBinding JimengScale}"
+                       Minimum="0" Maximum="1" Increment="0.05" FormatString="0.00"
+                       HorizontalAlignment="Stretch"
+                       ToolTip.Tip="{CompiledBinding L[adv.textWeightTip]}"/>
+      </Grid>
+      <CheckBox Content="{CompiledBinding L[adv.forceSingle]}" IsChecked="{CompiledBinding JimengForceSingle}"
+                IsVisible="{CompiledBinding IsJimengProvider}" FontSize="12"
+                ToolTip.Tip="{CompiledBinding L[adv.forceSingleTip]}"/>
+      <!-- 元素提取专属：lora_weight（商品提取文档里没有这个参数） -->
+      <Grid ColumnDefinitions="Auto,*" IsVisible="{CompiledBinding IsJimengProvider}">
+        <TextBlock Grid.Column="0" Text="{CompiledBinding L[adv.loraWeight]}" Classes="fieldLabel" Margin="0,0,8,0"/>
+        <NumericUpDown Grid.Column="1" Value="{CompiledBinding JimengLoraWeight}"
+                       Minimum="0" Maximum="2" Increment="0.05" FormatString="0.000"
+                       HorizontalAlignment="Stretch"
+                       ToolTip.Tip="{CompiledBinding L[adv.loraWeightTip]}"/>
+      </Grid>
+      <CheckBox Content="{CompiledBinding L[adv.returnUrl]}"
+                IsChecked="{CompiledBinding JimengReturnUrl}"
+                IsVisible="{CompiledBinding IsJimengProvider}" FontSize="12"
+                ToolTip.Tip="{CompiledBinding L[adv.returnUrlTip]}"/>
+      <CheckBox Content="{CompiledBinding L[adv.logoInfo]}" IsChecked="{CompiledBinding JimengLogoEnabled}"
+                IsVisible="{CompiledBinding IsJimengProvider}" FontSize="12"
+                ToolTip.Tip="{CompiledBinding L[adv.logoInfoTip]}"/>
+      <StackPanel Spacing="6" IsVisible="{CompiledBinding JimengLogoEnabled}">
+        <Grid ColumnDefinitions="Auto,*">
+          <TextBlock Grid.Column="0" Text="{CompiledBinding L[adv.logoText]}" Classes="fieldLabel" Margin="0,0,8,0"/>
+          <TextBox Grid.Column="1" Text="{CompiledBinding JimengLogoText}"
+                   PlaceholderText="{CompiledBinding L[adv.logoTextHint]}"/>
+        </Grid>
+        <Grid ColumnDefinitions="Auto,Auto,Auto,*">
+          <TextBlock Grid.Column="0" Text="{CompiledBinding L[hist.colPosition]}" Classes="fieldLabel" Margin="0,0,8,0"/>
+          <NumericUpDown Grid.Column="1" Value="{CompiledBinding JimengLogoPosition}"
+                         Minimum="0" Maximum="20" Increment="1" Width="90" Margin="0,0,12,0"/>
+          <TextBlock Grid.Column="2" Text="{CompiledBinding L[settings.languageLabel]}" Classes="fieldLabel" Margin="0,0,8,0"/>
+          <NumericUpDown Grid.Column="3" Value="{CompiledBinding JimengLogoLanguage}"
+                         Minimum="0" Maximum="20" Increment="1" Width="90"
+                         HorizontalAlignment="Left"/>
+        </Grid>
+        <Grid ColumnDefinitions="Auto,*">
+          <TextBlock Grid.Column="0" Text="{CompiledBinding L[region.layerAlpha]}" Classes="fieldLabel" Margin="0,0,8,0"/>
+          <NumericUpDown Grid.Column="1" Value="{CompiledBinding JimengLogoOpacity}"
+                         Minimum="0" Maximum="1" Increment="0.1" FormatString="0.00"
+                         HorizontalAlignment="Stretch"/>
+        </Grid>
+      </StackPanel>
+      <Grid ColumnDefinitions="Auto,*" IsVisible="{CompiledBinding IsOpenRouterProvider}">
+        <TextBlock Grid.Column="0" Text="only" Classes="fieldLabel" Margin="0,0,8,0"/>
+        <TextBox Grid.Column="1" Text="{CompiledBinding ProviderOnly}"
+                 PlaceholderText="{CompiledBinding L[adv.providerListHint]}"
+                 ToolTip.Tip="{CompiledBinding L[adv.onlyProvidersTip]}"/>
+      </Grid>
+      <Grid ColumnDefinitions="Auto,*" IsVisible="{CompiledBinding IsOpenRouterProvider}">
+        <TextBlock Grid.Column="0" Text="order" Classes="fieldLabel" Margin="0,0,8,0"/>
+        <TextBox Grid.Column="1" Text="{CompiledBinding ProviderOrder}"
+                 PlaceholderText="{CompiledBinding L[adv.orderProvidersTip]}"/>
+      </Grid>
+      <Grid ColumnDefinitions="Auto,*" IsVisible="{CompiledBinding IsOpenRouterProvider}">
+        <TextBlock Grid.Column="0" Text="ignore" Classes="fieldLabel" Margin="0,0,8,0"/>
+        <TextBox Grid.Column="1" Text="{CompiledBinding ProviderIgnore}"
+                 PlaceholderText="{CompiledBinding L[adv.ignoreProvidersTip]}"/>
+      </Grid>
+      <Grid ColumnDefinitions="Auto,*" IsVisible="{CompiledBinding IsOpenRouterProvider}">
+        <TextBlock Grid.Column="0" Text="sort" Classes="fieldLabel" Margin="0,0,8,0"/>
+        <TextBox Grid.Column="1" Text="{CompiledBinding ProviderSort}"
+                 PlaceholderText="price / throughput / latency"/>
+      </Grid>
+    </StackPanel>
+  </StackPanel>
+</UserControl>

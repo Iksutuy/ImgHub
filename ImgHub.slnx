@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ImgHub.Core/ImgHub.Core.csproj" />
+    <Project Path="src/ImgHub.App/ImgHub.App.csproj" />
+    <Project Path="src/ImgHub.Desktop/ImgHub.Desktop.csproj" />
+    <Project Path="src/ImgHub.Android/ImgHub.Android.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ImgHub.Core.Tests/ImgHub.Core.Tests.csproj" />
+    <Project Path="tests/ImgHub.Integration.Tests/ImgHub.Integration.Tests.csproj" />
+  </Folder>
+</Solution>

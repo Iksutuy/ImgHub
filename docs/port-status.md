@@ -1,8 +1,13 @@
-# imgagent Avalonia 跨平台重写 —— 施工状态
+# ImgHub Avalonia 跨平台重写 —— 施工状态
 
-> 目标：把原 Python + curses 的 imgagent 重写为 **Avalonia (C#/.NET 10)** 图形化工作台，
+> 目标：把原 Python + curses 的 imghub 重写为 **Avalonia (C#/.NET 10)** 图形化工作台，
 > 一套 UI 同时跑 **Windows 桌面**与 **Android**。
-> 施工起点：2026-09-19 · 前置研究见 `../docs/avalonia-migration-feasibility.md`
+> 施工起点：2026-09-19 · 前置研究见 [avalonia-migration-feasibility.md](avalonia-migration-feasibility.md)
+
+> 📌 **本文件的「一、当前进度总览」与「二、代码结构」是最初施工期的快照，
+> 数字已过时**（当时 Core 55 / 集成 37，仓库还在 `avalonia/` 子目录下）。
+> **最新状态看文末「四·十六」起的各轮记录**，以及 [HANDOVER.md](HANDOVER.md) §八。
+> 下文各轮记录**保留当时的原始数字不改**，以便对照历史。
 
 ---
 
@@ -15,19 +20,20 @@
 | **P2** | **主界面 + MVVM**（三栏工作台） | ✅ **完成 · 已实测运行** |
 | **P3** | **端到端集成测试**（离线生成闭环） | ✅ **完成 · 13/13 测试通过** |
 | **P4** | **Desktop head** | ✅ **Release 版已发布并实测运行** |
-| **P5** | **Android head** | ✅ **APK 构建成功（42 MB，arm64+x86_64）** |
+| **P5** | **Android head** | ✅ **APK 构建成功（arm64+x86_64）** |
 | **P6** | **高级功能（设置浮层/状态栏按钮/深浅主题）** | ✅ **完成 · 已实测** |
-| P7 | 响应式布局（手机竖屏）打磨 | ⏳ 待做 |
+| P7 | 响应式布局（手机竖屏）打磨 | ✅ 完成（见四·十三） |
 | **P8** | **区域标注重绘 / 多图预览 / 配置引导** | ✅ **完成 · 已实测** |
-| P9 | 润色候选选择 UI（4 条候选的图形化挑选） | ⏳ 待做 |
+| P9 | 润色候选选择 UI（4 条候选的图形化挑选） | ✅ 完成（见四·八 #8） |
 | P10 | Android 真机中文渲染验证 | ⏳ **需真机** |
 
-**测试合计：92/92 通过**（Core 55 + 集成 37）
+**测试合计（最新）：449/449 通过**（Core 236 + 集成 213）
 
-**构建产物**（`../release/`）：
+**构建产物**（`release/`，v0.5.43 实测）：
 ```
-release/desktop/                      Windows 桌面版（自包含框架依赖）
-release/android/imgagent-5.19.0-android.apk   42.12 MB（arm64-v8a + x86_64，含 AOT）
+release/desktop-aot/ImgHub.Desktop.exe          AOT（须整目录附带 3 个原生 DLL）
+release/desktop/                                框架依赖版（build.ps1 -Target desktop）
+release/android/imghub-0.5.43-android.apk       arm64-v8a + x86_64
 ```
 
 **已实测验证（截图 + 日志）**：
@@ -37,7 +43,7 @@ release/android/imgagent-5.19.0-android.apk   42.12 MB（arm64-v8a + x86_64，�
 [OK] 系统字体数: 319, 中文正常渲染      ← 全界面零乱码
 [OK] HttpClient(异步)                  ← 网络连通
 [OK] 离线生成 -> 落盘 -> 历史 -> 撤回 -> 持久化 闭环
-[OK] Android APK 构建成功（含 Imgagent.App/Core/Android 的 AOT 原生库）
+[OK] Android APK 构建成功（含 ImgHub.App/Core/Android 的 AOT 原生库）
 ```
 
 
@@ -46,31 +52,33 @@ release/android/imgagent-5.19.0-android.apk   42.12 MB（arm64-v8a + x86_64，�
 ## 二、已完成：代码结构
 
 ```
-avalonia/
-├── Imgagent.slnx
+（仓库根，早期在 avalonia/ 子目录下，2026-09-21 重组——见四·十四）
+├── ImgHub.slnx
 ├── Directory.Build.props            Avalonia 12.1.2 统一版本
 ├── src/
-│   ├── Imgagent.Core/               ★ 平台无关（net10.0，无 UI 依赖）
+│   ├── ImgHub.Core/               ★ 平台无关（net10.0，无 UI 依赖）
 │   │   ├── Catalog.cs               模型/质量/画幅/成本（对应 settings.py）
 │   │   ├── Models/                  Item / GenResult / AppConfig / ApiProvider
 │   │   ├── Http/                    ApiError + ErrorBody + ErrorHints + HttpJsonClient
 │   │   ├── Imaging/                 ImageCodec + Placeholder（SkiaSharp）
 │   │   ├── Services/                ImageApi（双 provider）+ PolishService
 │   │   └── Storage/                 Session（配置/历史/提示词/key）
-│   ├── Imgagent.App/                ★ 共享 UI（XAML + ViewModel）
+│   ├── ImgHub.App/                ★ 共享 UI（XAML + ViewModel）
 │   │   ├── App.axaml(.cs)           深色主题 + CJK 字体回退链 + 组合根
 │   │   ├── Services/                平台抽象（IPlatformStorage 等）
 │   │   ├── ViewModels/              MainViewModel（编排层）
 │   │   └── Views/                   MainView（三栏）+ MainWindow
-│   ├── Imgagent.Desktop/            net10.0（Windows/Linux/macOS）
-│   └── Imgagent.Android/            net10.0-android（结构就位）
+│   ├── ImgHub.Desktop/            net10.0（Windows/Linux/macOS）
+│   └── ImgHub.Android/            net10.0-android（结构就位）
 └── tests/
-    ├── Imgagent.Core.Tests/         53 项（常量/错误/文件名/图像/存储/润色）
-    └── Imgagent.Integration.Tests/  13 项（端到端离线生成闭环）
+    ├── ImgHub.Core.Tests/         53 项（常量/错误/文件名/图像/存储/润色）
+    └── ImgHub.Integration.Tests/  13 项（端到端离线生成闭环）
 ```
 
+> ⬆️ 上面的项数是**施工期快照**；当前为 Core 56 + 集成 58 = **114 项**。
+
 **架构原则（延续原项目工程约束）**：
-- `Imgagent.Core` **不引用任何 UI/平台类型** → 可单元测试、可换 UI 框架；
+- `ImgHub.Core` **不引用任何 UI/平台类型** → 可单元测试、可换 UI 框架；
 - 平台差异走接口注入（`IPlatformStorage` / `IPlatformInfo`），各 head 提供实现；
 - 业务铁律逐条平移（见 §三）。
 
@@ -104,14 +112,14 @@ avalonia/
 |---|---|---|---|
 | 1 | workload 装了但构建说没装 | 本机 pack 只有 `Microsoft.Android.Ref.35`，而 manifest 10.0.100 要求 **Ref.36** | 补装：`dotnet workload install android --skip-manifest-update` |
 | 2 | `dotnet workload install android` 失败 | 提权（`Start-Process -Verb RunAs`）被沙箱静默拒绝；但其实是**上次操作被中断**留下的假象 | **非提权**直接重跑即可成功（wasm-tools 的 MSI 通道已验证可写） |
-| 3 | 报 `XA5207: 找不到 API 36 的 android.jar` | 系统 Android SDK 在 `C:\Program Files (x86)\...`（**不可写**） | 用官方目标把 SDK/JDK 装到**用户目录**：<br>`dotnet build src\Imgagent.Android -t:InstallAndroidDependencies -f net10.0-android -p:AcceptAndroidSDKLicenses=True -p:AndroidSdkDirectory=%USERPROFILE%\android-sdk-imgagent -p:JavaSdkDirectory=%USERPROFILE%\jdk-imgagent` |
-| 4 | `MainActivity` 编译错误 | Avalonia 12 的 API 变更：`AvaloniaMainActivity` 改为**非泛型**，App 类型由 `AvaloniaAndroidApplication<TApp>` 指定 | 见 `src/Imgagent.Android/MainActivity.cs` 与 `AndroidApp.cs` |
+| 3 | 报 `XA5207: 找不到 API 36 的 android.jar` | 系统 Android SDK 在 `C:\Program Files (x86)\...`（**不可写**） | 用官方目标把 SDK/JDK 装到**用户目录**：<br>`dotnet build src\ImgHub.Android -t:InstallAndroidDependencies -f net10.0-android -p:AcceptAndroidSDKLicenses=True -p:AndroidSdkDirectory=%USERPROFILE%\android-sdk-imghub -p:JavaSdkDirectory=%USERPROFILE%\jdk-imghub` |
+| 4 | `MainActivity` 编译错误 | Avalonia 12 的 API 变更：`AvaloniaMainActivity` 改为**非泛型**，App 类型由 `AvaloniaAndroidApplication<TApp>` 指定 | 见 `src/ImgHub.Android/MainActivity.cs` 与 `AndroidApp.cs` |
 | 5 | `APT2260: drawable/icon not found` | 缺应用图标资源 | 复制 `Icon.png` 并加入 `<AndroidResource>` |
 
 **最终结果**：
 ```
-src/Imgagent.Android/bin/Release/net10.0-android/
-  com.imgagent.app-Signed.apk   42.12 MB   ← arm64-v8a + x86_64，含 AOT 原生库
+src/ImgHub.Android/bin/Release/net10.0-android/
+  com.imghub.app-Signed.apk   42.12 MB   ← arm64-v8a + x86_64，含 AOT 原生库
 ```
 
 **复现命令**（已封装进 `build.ps1`）：
@@ -119,8 +127,8 @@ src/Imgagent.Android/bin/Release/net10.0-android/
 powershell -ExecutionPolicy Bypass -File build.ps1 -Target android
 ```
 
-> ⚠️ 注：Android 工具链装在**用户目录**（`%USERPROFILE%\android-sdk-imgagent`、
-> `%USERPROFILE%\jdk-imgagent`），不污染系统 SDK，也不需要管理员权限。
+> ⚠️ 注：Android 工具链装在**用户目录**（`%USERPROFILE%\android-sdk-imghub`、
+> `%USERPROFILE%\jdk-imghub`），不污染系统 SDK，也不需要管理员权限。
 > 若换机器，先跑一次 §4.1 表格第 3 行的 `InstallAndroidDependencies` 命令。
 
 ### 4.2 Android 中文渲染 —— 仍需真机验证
@@ -238,7 +246,7 @@ ComboBox 会瞬发一次 `SelectedItem = null` → `OnModelChanged(null)` → �
 3. `OnProviderChanged` 加 `_switchingProvider` **防重入**，并把「选默认模型 → 刷新下拉 → 落盘」做成**原子序列**（中间不再有空模型可见）；
 4. `OnModelChanged` 收到 null/空时直接落到该 provider 的默认模型，不再把 null 写盘。
 
-实测：用用户真实 `%LOCALAPPDATA%\imgagent` 配置（含 model:null）二次启动，**正常打开**。
+实测：用用户真实 `%LOCALAPPDATA%\imghub` 配置（含 model:null）二次启动，**正常打开**。
 
 ### 其余修复
 
@@ -246,7 +254,7 @@ ComboBox 会瞬发一次 `SelectedItem = null` → `OnModelChanged(null)` → �
 |---|---|
 | 切 provider 后左上模型框空白、不自动选 | 见上：`OnProviderChanged` 现在保证 `Model` 总是合法默认模型并同步下拉 |
 | 设置「校验」点了无反应 | 新增 `KeyChecking/KeyCheckStatus`，设置浮层内**实时显示**「正在校验… / 校验通过 · 可用模型 N 个 / 校验失败：原因」 |
-| 润色端点/模型重启后丢失 | `SaveSettings` 同时落 `config.json`（polish_base_url/polish_model）与 `.imgagent_polish_key`；启动时组合根回填 `PolishService`（已验证用户配置里三项均正确持久化） |
+| 润色端点/模型重启后丢失 | `SaveSettings` 同时落 `config.json`（polish_base_url/polish_model）与 `.imghub_polish_key`；启动时组合根回填 `PolishService`（已验证用户配置里三项均正确持久化） |
 | 左栏滚动条与提示词历史/按钮重叠 | 左栏改为 `Grid = [内容, 14px 滚动条列]`，滚动条独占列不再压控件；提示词历史放进固定 MaxHeight=96 的容器 |
 
 ### 配置兼容性提醒
@@ -275,7 +283,7 @@ ComboBox 会瞬发一次 `SelectedItem = null` → `OnModelChanged(null)` → �
 
 ### 架构约束遵守
 
-缩略图**没有**加在 `Imgagent.Core.Models.Item` 上 —— Core 层是平台无关层，
+缩略图**没有**加在 `ImgHub.Core.Models.Item` 上 —— Core 层是平台无关层，
 不得引用 Avalonia。改为 App 层新增 `HistoryRow` 包装类型承载 `Bitmap`。
 （首版误加到 Item 上导致编译失败，已纠正。）
 
@@ -411,7 +419,7 @@ ComboBox 会瞬发一次 `SelectedItem = null` → `OnModelChanged(null)` → �
 | 用途 | 方案 |
 |---|---|
 | **exe 文件图标**（资源管理器/任务栏） | 多尺寸 ICO（16/24/32/48/64/128/256，PNG-in-ICO），由 `make-icon.ps1` 从 `app-icon.png` 生成；csproj 设 `<ApplicationIcon>app.ico</ApplicationIcon>` |
-| **窗口标题栏图标** | `MainWindow.axaml` 用 `Icon="avares://Imgagent.App/Assets/app-icon.png"` |
+| **窗口标题栏图标** | `MainWindow.axaml` 用 `Icon="avares://ImgHub.App/Assets/app-icon.png"` |
 
 > ⚠️ 踩坑记录：窗口 Icon **不能用 PNG-in-ICO** —— Avalonia 的 `IconTypeConverter`
 > 走 `Bitmap(Stream)` 单帧解码，遇到 PNG-in-ICO 会抛
@@ -420,10 +428,10 @@ ComboBox 会瞬发一次 `SelectedItem = null` → `OnModelChanged(null)` → �
 
 ### App 层重建（意外删除后）
 
-一次清理操作误删了 `src/Imgagent.App` 整目录（含 `MainViewModel.cs` 899 行、
+一次清理操作误删了 `src/ImgHub.App` 整目录（含 `MainViewModel.cs` 899 行、
 `MainView.axaml`、`Controls/RegionCanvas.cs` 等）。恢复方式：
 
-1. `Imgagent.Core` + 两个测试工程**未受影响**（55 + 37 项测试仍全绿）——
+1. `ImgHub.Core` + 两个测试工程**未受影响**（55 + 37 项测试仍全绿）——
    这正是「Core 层零 UI 依赖」架构红利的体现；
 2. 依据**集成测试里锁死的 37 项契约**逐条反推重建 App 层：
    - `MainViewModel`：全部属性/命令/行为按测试断言还原
@@ -454,10 +462,10 @@ ComboBox 会瞬发一次 `SelectedItem = null` → `OnModelChanged(null)` → �
 | `docs/ARCHITECTURE.md` | 198 | 四层结构、数据流、双 provider 差异、扩展点 |
 | `docs/CONSTRAINTS.md` | 292 | **写代码前必读**：A–G 七类硬约束 + 常见陷阱速查 |
 | `docs/DELIVERY.md` | 181 | 三级打包方案 + Android 前置 + 检查清单 |
-| `src/Imgagent.Core/README.md` | 43 | 业务层职责 + 关键不变量 |
-| `src/Imgagent.App/README.md` | 55 | UI 层结构与设计决策 |
-| `src/Imgagent.Desktop/README.md` | 44 | 桌面 head + 图标 + 打包 |
-| `src/Imgagent.Android/README.md` | 56 | Android head + mipmap/自适应图标 |
+| `src/ImgHub.Core/README.md` | 43 | 业务层职责 + 关键不变量 |
+| `src/ImgHub.App/README.md` | 55 | UI 层结构与设计决策 |
+| `src/ImgHub.Desktop/README.md` | 44 | 桌面 head + 图标 + 打包 |
+| `src/ImgHub.Android/README.md` | 56 | Android head + mipmap/自适应图标 |
 | `tests/README.md` | 43 | 测试哲学 + 关键用例 |
 | `tools/make-android-icons.ps1` | — | 图标生成脚本 |
 
@@ -484,11 +492,11 @@ values/colors.xml                      ic_launcher_background = #1B6FE8
 
 **修复**：**内嵌 CJK 字体**（这是唯一可靠方案）：
 ```
-src/Imgagent.App/Assets/Fonts/NotoSansSC.ttf   16.95 MB（从系统 NotoSansSC-VF.ttf 复制）
+src/ImgHub.App/Assets/Fonts/NotoSansSC.ttf   16.95 MB（从系统 NotoSansSC-VF.ttf 复制）
 ```
 `App.axaml` 字体链改为**内嵌字体优先**：
 ```xml
-<FontFamily x:Key="AppFont">avares://Imgagent.App/Assets/Fonts/NotoSansSC.ttf#Noto Sans SC,
+<FontFamily x:Key="AppFont">avares://ImgHub.App/Assets/Fonts/NotoSansSC.ttf#Noto Sans SC,
     Microsoft YaHei UI, Microsoft YaHei, Noto Sans CJK SC, Segoe UI, sans-serif</FontFamily>
 ```
 
@@ -535,13 +543,13 @@ src/Imgagent.App/Assets/Fonts/NotoSansSC.ttf   16.95 MB（从系统 NotoSansSC-V
 **目录重组**（C# 提到根，Python 归 legacy）：
 
 ```
-imgagent/                          原 avalonia/ 的内容提到根目录
-├── src/Imgagent.Core|App|Desktop|Android
-├── tests/Imgagent.Core.Tests|Integration.Tests
+imghub/                          原 avalonia/ 的内容提到根目录
+├── src/ImgHub.Core|App|Desktop|Android
+├── tests/ImgHub.Core.Tests|Integration.Tests
 ├── legacy/                        原 mobile/（Python + curses 版）
 ├── docs/                          （含原 avalonia/docs）
 ├── tools/make-android-icons.ps1
-├── build.ps1 / make-icon.ps1 / Directory.Build.props / Imgagent.slnx
+├── build.ps1 / make-icon.ps1 / Directory.Build.props / ImgHub.slnx
 ├── README.md / LICENSE / NOTICE.md / .gitignore
 └── release/                       （.gitignore 排除，走 GitHub Releases）
 ```
@@ -562,7 +570,7 @@ imgagent/                          原 avalonia/ 的内容提到根目录
 | 1 | 🔴 | **宽/窄屏各持一个 `RegionCanvas`，切换布局时标注丢失**（用户画好标注 → 转屏 → 全没了） | `RegionCanvas.ExportShapes/ImportShapes` 快照传输；`OnSizeChanged` 切换前把数据搬到另一实例 |
 | 2 | 🔴 | **`RefImages` 无生命周期** —— 导入一次参考图后，**每次编辑都误带上**（污染结果） | 改为**一次性**（编辑后自动清空）；新增 `KeepRefImages` 开关 + XAML「保留」勾选（默认不勾） |
 | 3 | 🟡 | **单张图片下载失败静默丢弃** —— 4 张成功 1 张失败，用户看到 3 张却不知情 | `PollOutcome.DownloadFailures` 计数 → 汇总后在进度里明确提示「⚠ 部分产出缺失：N 个任务失败，M 张下载失败」+ 失败原因 |
-| 4 | 🟡 | **`TotalCost` 与 `Items` 求和可能偏差**（Undo 减的是均摊值，TotalCost 是 API 实际值） | `Session.ReconcileCost()`：偏差 > 1e-6 时以 Items 求和为准；`RefreshHistory` 时调用 |
+| 4 | ✅ | **`TotalCost` 与 `Items` 求和可能偏差**（Undo 减的是均摊值，TotalCost 是 API 实际值） | 已彻底统一：`TotalCost` 改为**计算属性**（从 `Items` 求和），偏差在结构上不可能出现。`Session.ReconcileCost()`（空方法）已于 P0-7 删除 —— 此前文档误称它在 `RefreshHistory` 时被调用 |
 | 5 | 🟡 | **生成失败后 `BatchResults` 不清理** → 旧缩略图条残留，误导用户 | 生成开始前 + 失败分支都清空 |
 | 6 | 🟢 | 全部任务失败时错误信息不含原因 | 汇总 `failureReasons` 到异常消息 |
 
@@ -572,7 +580,7 @@ imgagent/                          原 avalonia/ 的内容提到根目录
 |---|---|
 | TODO / FIXME / HACK / NotImplemented | **0 处** |
 | 空 `catch` | 全部为**有意的容错**（存储写失败不阻断、缩略图解码失败返回 null），且均有注释说明 |
-| 未使用的公开成员 | 无（`ReconcileCost` 等新增成员均已被调用） |
+| 未使用的公开成员 | 无（新增成员均已被调用；`ReconcileCost` 空方法已于 P0-7 删除） |
 | 硬编码凭据 | **无**（key 全由用户配置） |
 | Core 引用 UI 框架 | **无**（架构红线保持） |
 
@@ -682,10 +690,61 @@ public RegionSnapshot? GetRegionsFor(string? imagePath);
 ### #7 画布式缩放（标记跟随）
 
 `RegionCanvas` 新增视图变换：
-- **滚轮缩放**（0.2×–8×）
+- **滚轮缩放**（0.2×–8×）——**以鼠标所在点为锚点**（v0.5.32 修，见下）
 - **右键 / 中键 / 空格+左键平移**
 - **快捷键 `0` 复位**；工具栏另有 `−` `＋` `复位` 按钮
 - 坐标**归一化存储** + 渲染时统一变换 → **标记天然绑定在图片上，随缩放平移同步**
+
+#### v0.5.32 修正（用户报的 4 项）
+
+| 问题 | 根因 | 修法 |
+|---|---|---|
+| 缩放不以鼠标点为原点 | 滚轮调用 `ZoomBy(factor)` 无锚点，恒绕控件中心 | 新增 `ZoomBy(factor, anchor)`，滚轮传 `e.GetPosition(this)`；公式 `pan' = pan·r + d·(1-r)`（`r = z'/z`） |
+| **滚轮缩放"跑位"（拖动却正常）** | ⚠️ **两者坐标系不同**：`Stretch="Uniform"` 的 `Image` 在 Avalonia 里 **`Bounds` 会自动收缩为「图片内容矩形」**（实测：400×400 图放 600×300 容器 → `Image.Bounds = (150,0,300,300)`），而 `RegionCanvas` 默认铺满容器 `(0,0,600,300)`。**平移**时两者位移量恰好相同 → 看着正常；**缩放**时范围不同被同比例放大 → 分离 | ⭐ **根治**：新增 `RegionCanvas.FollowBoundsOf(target)` —— 画布**订阅**底图 `Bounds` 变化，自动跟随尺寸；图片层套用**同一个** `ViewMatrix`。 |
+| **（上一版为何没修好）对齐时机漏了** | 旧实现靠若干时机**手工**调 `AlignCanvasToImage`（DataContext / PreviewPath / PreviewImage / resize / 布局切换 / 进出编辑模式）。而 `Image.Bounds` 要等**位图异步解码完成**才变成内容尺寸 —— 漏掉任一时机就偏，这正是"改了不生效"的根源。 | 改为**订阅 `BoundsProperty`**：位图就绪、resize、布局切换全部自动触发，时机问题从根上消失。防护见 `CanvasFollowsImageTests`（7 条，含"图片解码就绪后画布自动跟随"）。 |
+| **（v0.5.33 新回归）工具与滚轮全部失效** | ⚠️ 上一版把 XAML 的 `Image`/`RegionCanvas` 改成 `HorizontalAlignment="Center"` —— 而 **Center 下未设尺寸的控件 `DesiredSize` 为 0** → 画布变成 0×0 → **没有任何命中区域**（工具画不上、滚轮不响应）。实测：`Center`+无尺寸 → `Bounds=(300,150,0,0)`；`Stretch`+无尺寸 → `(0,0,600,300)` | 改回 `Stretch`（对齐没跑时至少铺满容器可交互）+ 跟随逻辑在拿不到 `Image.Bounds` 时**显式清掉尺寸**退回 Stretch |
+| **（附带发现）点击处与落笔处偏移** | `BuildMatrix` 把 `pan` 放在**缩放之内**（实际屏幕平移 = `-pan·z`），而 `ToNormalized` 与拖拽逻辑都按**屏幕单位 pan** 写 → 三者不互逆 | 统一为 `screen = (local − c/2)·z + c/2 + pan`，与 `ScreenToImage` 严格互逆（实测修前 z=2、pan=(50,30) 时点 (300,150) 反解映回是 (150,60)） |
+| **（附带发现）`RenderTransformOrigin` 语义** | 默认值是 **`50%,50%`（Center）** 而非 `(0,0)`；Avalonia 会组合 `T(o)·M·T(-o)`。**但注意**：平移不受它影响（`T(-c)·T(pan)·T(c) = T(pan)`），只有缩放受影响 | `SyncPreviewTransform` 显式设 `origin = RelativePoint.TopLeft`，保证与 `RegionCanvas` 的裸矩阵语义一致 |
+| **（附带发现）位图异步就绪后未重新对齐** | `Image.Bounds` 要等位图**解码完成**才变成内容尺寸；只监听 `PreviewPath` 会在"图还没加载完"时对齐到 0 → 等于没对齐（这正是"改了不生效"的重要原因） | 监听 `PreviewImage` 变化 + `RefreshCanvasAlignmentDeferred`（Bounds 仍为 0 时最多重试 5 帧） |
+| 取消编辑后不复位 | 退出编辑只切 `RegionMode`，缩放/标注/蒙版残留 | 新增 `RegionCanvas.ResetView()` + `ClearRegions()` + `MainViewModel.ClearAnnotationState()`，由 `OnVmPropertyChanged` 监听 `RegionMode` 统一触发（覆盖"编辑成功后自动退出"路径） |
+| 需求② 框/圈改实心 | 此前矩形/椭圆只描边；作为 mask 送模型时"一圈线"= 没指定区域 | `OutlineShape.DrawPreview` 与 `RenderToMask` 都改为**填充**（预览与导出一致） |
+| 需求③ 蒙版说明入口 | 用户不知道蒙版怎么用、传给谁、提示词怎么写 | 工具栏加「蒙版说明」按钮 + `MainViewModel.BuildMaskHelpLines(provider)` 纯函数生成文案（**按 provider 动态**，避免文案与实际行为不符） |
+| **「蒙版说明」被遮挡** | 标注工具条是**固定高度**（`AnnotationToolbarHeightWide=92`）只放得下 2 行；按钮加进去后第 1 行超宽 → 换行到第 3 行 → **被裁**（用户报"被遮挡"） | 移到**底栏**（空间独立、不受工具条高度约束）。`MainViewLayoutContractTests` 钉住"必须在底栏内" |
+| **「系统看图器/保存到相册」被遮挡** | 同上：它们原在中栏标注工具条下方（Row4），工具条换行后互相压住 | 用户要求：**移到底栏左侧**。中栏随之删掉 Row4（行数 5→4）；窄屏那份也一并移除（底栏对宽窄都显示） |
+| 底栏原本整条 `IsVisible="False"` | 历史事故：隐藏底栏里的按钮全部不可达（AGENTS.md §3.3/§6） | **启用底栏**并把常用操作放进去（看图/保存/撤回/重新预览/蒙版说明/快捷键/数据目录/设置）—— 全部可达 |
+| **切换到未就绪端点就"自动取消编辑"** | 「编辑图片」按钮 `IsEnabled` 绑的是 `IsConfigured` → 切到没配 key 的端点时按钮**变灰**，用户既进不去、也退不出（看着像被自动取消）。但**标注是纯本地操作，不需要 API key** | 新增 `CanAnnotate`（= `CurrentItem is not null`）并改绑；`ToggleRegionModeCore` 守卫同步改用 `CurrentItem`（与按钮判据一致，避免"可点但被拒"） |
+| **（v0.5.34）标注超出图片边界后"消失"** | 用户澄清的语义：**可绘制范围 = 图片尺寸**，**可查看范围 = 整个预览灰区**。旧实现把画布尺寸设成图片尺寸且 `ClipToBounds = true` → 缩放/平移后超出图片的标注**被裁掉**（"超出起始上界后上面部分消失"） | ① 画布 `Bounds` **铺满灰区**（`ClipToBounds = false`）+ 新增 `ImageContentRect` 作**坐标基准**（= 图片矩形）；② 图片层用 `ImageMatrix`（不含图片原点偏移）；③ 预览 Grid 再套一层 `ClipToBounds` Border，把可查看范围严格限定为灰区 |
+| **（v0.5.34）图片居中时缩放"变形/移位"** | 图片在灰区里**居中**（不是从 (0,0) 起），而矩阵少了这层原点偏移 → 缩放中心跑到灰区中心 | `BuildMatrix` 末尾追加 `T(contentX, contentY)`；`ImageMatrix` **不含**该偏移（`Image` 已被布局放在那里）。关系：`ViewMatrix == ImageMatrix · T(origin)` |
+| **（v0.5.35）蒙版可绘制范围超出图片** | 落笔/拖动**没有做范围检查** → 在图片外的灰区也能落笔，记下越界归一化坐标（矩形画到灰区里；送服务端也是越界无效区域） | `ToNormalizedClamped`（钳制到 [0,1]）+ `IsInsideImage`（图片外按下不落笔）；`ImportShapes` 也钳制（旧快照可能含越界坐标） |
+
+#### v0.5.36 修正（用户 8 项需求）
+
+| 需求 | 根因/说明 | 修法 |
+|---|---|---|
+| ① 底栏精简 | 底栏的「撤回/重新预览/设置」与顶栏/左栏重复 | 删掉这三个；「未配置」提示文案改指**右上角**（设置按钮在顶栏）；版本号移到**底栏最右** |
+| ② 标注编辑历史 | 标错一笔只能「清除」全部重画 | `RegionCanvas` 加**撤销/重做栈**（按动作顺序，上限 100 步）：落笔成形状/擦除一次/清除/载入各算一个动作；UI 加「撤销/重做/图片居中」按钮（两套布局同步） |
+| ③ 重叠不叠加 | `PushOpacity` 只统一整组不透明度，**组内重叠处仍会 alpha 累加** | 改为**离屏合成**（与 `ExportComposite` 同一套语义）：先把标记画到不透明临时层，再整体以固定 alpha 贴回 |
+| ④ 单色蒙版 | **核实结论**：端点的官方 "Mask requirements" 只要求 **尺寸一致 + 含 Alpha**，**没有**"必须单色"。千问明确不支持 mask | 现有实现已输出 RGB=0 的单色蒙版（消除"按亮度解读"的歧义）；新增 `RegionMaskFormatTests`（4 条）钉住尺寸/Alpha/单色/alpha=0=要改；不支持蒙版的端点走 `SupportsMaskChannel` 降级为合成图 |
+| ⑤ 去掉画笔 | 「画笔」与「马克笔」走**完全相同**的绘制路径（仅默认粗细不同），属重复功能 | 从 `RegionTool` 枚举与 `ToolNames` 移除；索引左移（旧 4=橡皮 → 新 3），`CanvasTool` 用 `Clamp(_toolIndex, 0, 3)` 保证旧值安全落位 |
+| ⑥ 方框/圆圈隐藏粗细条 | 它们是**区域**语义（填充整块），粗细无意义 | 新增 `ToolUsesBrushSize`（只对马克笔/橡皮为真），粗细组按它显隐（两套布局同步） |
+| ⑦ 橡皮粗细不一致 | 指示圈用 `BrushSize*1.2`（屏幕像素），实际擦除用 `NormSize()*2.5`（归一化）→ **基准不同**，擦除范围明显大于圆圈 | 统一到 `EraserNormRadius()` 单一真源；指示圈与擦除判定从它派生 |
+| ⑧ 马克笔加指示圈 | 马克笔没有落笔预览 | 与橡皮同样的指示圈（虚线样式区分），半径 = 笔迹宽度的一半；两者都套同一个变换矩阵以保证与判定一致 |
+
+> 附带修掉：`AnnotationToolbarHeightWide` 被提示词输入框**错误复用**（改工具条高度会连带拉长左栏输入框）→ 拆出独立的 `PromptBoxHeightWide`。
+> 回归防护见 `RegionCanvasHistoryTests`（9 条）、`RegionCanvasOverlapTests`（2 条）、`RegionMaskFormatTests`（4 条）
+> 与 `WorkbenchFlowTests` 里的工具映射/粗细显隐断言。
+| 工具与下拉框未对齐 | 下拉 `Height=34` + 文字默认基线；且高度常量两处硬编码 | 行内元素统一 `VerticalAlignment="Center"`，下拉高度走 `UiMetrics.FieldHeightCompact` 单一真源 |
+| （核查）编辑工具是否真传蒙版 | **APIMart / OpenAI 确实传**；OpenRouter/千问/即梦文档无 mask 字段，按设计降级为「原图 + 标注合成图」 | 抽出真源 `Catalog.SupportsMaskChannel`；修掉 App 层曾**只认 APIMart** 的漏判（OpenAI 蒙版被无谓丢弃，且提示文案与行为不符） |
+
+> ⚠️ **走弯路的记录（别再重复）**：这个问题先后修过三次 ——
+> ① 归因到 `RenderTransformOrigin` 默认 50%（它只影响缩放，不是主因）；
+> ② 在矩阵里补「内容矩形偏移」（要同时维护两套坐标系 + 两个矩阵，越改越复杂）；
+> ③ 才用 **`RenderTargetBitmap` 读像素** 实测出真相：两者 `Bounds` 根本不是同一个矩形。
+> **教训**：这类"看代码想不出来"的坐标问题，直接渲染一帧读像素最快。
+
+> 回归防护见 `tests/ImgHub.Integration.Tests/RegionCanvasSyncTests.cs`（7 条，含**真实渲染读像素**的端到端断言）、
+> `RegionCanvasViewTests.cs`（14 条）、`RegionShapeAndHelpTests.cs`（4 条）
+> 与 `tests/ImgHub.Core.Tests/MaskChannelTests.cs`（3 条）。
 
 ### 验证
 
@@ -699,42 +758,329 @@ public RegionSnapshot? GetRegionsFor(string? imagePath);
 
 ---
 
+## 四·十六、文档与指引校正 + 需求 #6 补实（后续轮次）
+用户要求「用 codegraph 索引项目并理解，完善所有文档和指引」。本轮先建索引、通读代码，
+再逐条核对文档与**实际代码**的差异，并顺带补上一个被漏做的需求。
+
+### codegraph 索引
+
+```
+Files: 68   Nodes: 1,974   Edges: 5,723
+csharp 36 · python 27 · xml 5
+[OK] Index is up to date
+```
+
+用 `codegraph status / files / context / node` 定位核心链路，
+与人工阅读交叉印证（如「生成 → ImageApi → LandResults → Session」的数据流）。
+
+### 🔴 发现并修复的真实缺陷：需求 #6 从未落实
+
+| 项 | 事实 |
+|---|---|
+| commit 06f1dd4 记录 | 「#6 设置按钮移到右上角（深色按钮旁，齿轮图标）」 |
+| 实际代码 | 顶栏（`MainView.axaml` 第 38 行深色按钮旁）**没有**设置按钮 |
+| 唯一入口 | 第 525 行，位于**整体隐藏的底栏**（`IsVisible="False"`） |
+| 后果 | **设置浮层在 UI 上完全无法打开** —— 用户只能手改 `config.json` |
+| 为何测试没抓到 | 集成测试直接调 `OpenSettingsCommand`（`WorkbenchFlowTests`），不经过 XAML |
+
+**修复**：在顶栏「深色」按钮旁补回设置按钮。两个取舍：
+
+1. 用**普通 Unicode ⚙**（`&#x2699;`）而非 Segoe MDL2 字形 —— Android 无 MDL2 字体，
+   用它会渲染成方框；
+2. **窄屏（<900px）隐藏文字标签与「深色」按钮** —— 顶栏还要容纳 provider 下拉（132px）
+   与设置按钮，446px 宽下会溢出约 20px；深色切换在**设置浮层里有等价开关**
+   （「界面选项 → 深色主题」），功能不丢失。
+
+> 这是「两套布局」约束（D4b）的实例：同一元素在不同宽度下需要不同的可见性。
+
+### 🔴 第二个同源缺陷：需求 #14 把「导入」按钮删掉了却没加回
+
+| 项 | 事实 |
+|---|---|
+| commit 06f1dd4 记录 | 「#14 导入按钮移到历史 / 累计面板标题行后方」 |
+| 实际代码 | `OnImportClick` 在 `MainView.axaml` 里**已无任何引用**（成了死代码） |
+| 后果 | **用户无法导入图片**（导入是标注编辑的前置功能） |
+| 为何测试没抓到 | `WorkbenchFlowTests.ImportImage_AddsAsImported` 直接调 `_vm.ImportImageAsync`，不经过 XAML |
+
+**修复**：在宽屏与窄屏两处的「历史 / 累计」标题行各补一个「导入」按钮
+（`Click="OnImportClick"`），与 #6 是同一 commit 里两个同类的"删了没加回"问题。
+
+> 这两个缺陷印证了同一个教训：**`Command`/方法的单元测试通过，不代表 UI 上能点到它**。
+> 已写入 [CONSTRAINTS.md](CONSTRAINTS.md) D4c 与 [tests/README.md](../tests/README.md)。
+
+### 文档中已过时/错误的事实（逐条校正）
+
+| # | 位置 | 原文档 | 实际 |
+|---|---|---|---|
+| 1 | 根 README、docs/README、HANDOVER、tests/README、Core README | 测试 55 + 37 = 92 | **56 + 58 = 114** |
+| 2 | 根 README、docs/README、DELIVERY、HANDOVER、Desktop README | `cd avalonia` / `src/ImgHub.App` 相对旧根 | 仓库已重组，命令在**仓库根**执行 |
+| 3 | 根 README、DELIVERY、HANDOVER | `build.ps1 -Target desktop-aot` / `-Target desktop-single` | `build.ps1` 的 `ValidateSet` 只有 `all\|desktop\|android`，**无 AOT 目标** |
+| 4 | docs/README、HANDOVER、ARCHITECTURE、CONSTRAINTS | `mobile/`（上一代 Python） | 已改名 `legacy/` |
+| 5 | ARCHITECTURE §四 | 底栏有「⚙ 设置」；设置触发 = 底栏 ⚙ | 底栏已隐藏；设置入口在顶栏 |
+| 6 | ARCHITECTURE §五 | RegionCanvas「两种语义：要改红/要保留绿」 | 语义已移除，统一用当前画笔色 |
+| 7 | ARCHITECTURE §五 | `ExportMask` =「白=要改，黑=保留」 | 实为**黑底 + 不透明笔迹**（笔迹用当前画笔色） |
+| 8 | ARCHITECTURE §一 | Desktop 43 行、Android 约 60 行 | `Program.cs` 16 行；Android 两文件合计 43 行 |
+| 9 | CONSTRAINTS §D | D6 章节被插进 G 的表格中间（**表格断裂**） | 已重排，D6 归入 D 类，并补 D7 |
+| 10 | CONSTRAINTS §D5 | 字体链只列系统字体名 | 实为**内嵌 `NotoSansSC-Regular.ttf` 优先** |
+| 11 | CONSTRAINTS §E3 | 误删的 ViewModel「899 行」 | 现为 1099 行 |
+| 12 | NOTICE.md §1 | 字体文件 `NotoSansSC.ttf`，「原样嵌入未做修改」 | 实为 `NotoSansSC-Regular.ttf`，经**实例化 wght=400 + 子集化**（7.15 MB，已无 fvar/gvar） |
+| 13 | DELIVERY §一 | AOT 23.3 MB、APK ~42 MB | AOT exe **30.59 MB**、APK **51.42 MB** |
+| 14 | DELIVERY §三 | 图标文件 `values/ic_launcher_background.xml` | 实为 `values/colors.xml`；另有 `ic_launcher_round` 系列与 `roundIcon` |
+| 15 | DELIVERY §五 | 版本「如 5.19.0」 | 当前 5.22.0；且 `build.ps1` 里**硬编码**了版本（改版本要两处同步） |
+| 16 | Android README | 「竖屏三栏挤压 待改」 | 已完成（`IsWideLayout` 断点，446×859 实测） |
+| 17 | Core README | 缺 `Models/ModelStats.cs`、`Services/ModelStatsService.cs` | 已补，并新增「数据目录文件」表 |
+| 18 | docs/README | 未收录 `fix-plan-v5.22.md`、`avalonia-migration-feasibility.md` | 已补 |
+| 19 | HANDOVER §八 | 「Android 横竖屏布局待完善」「Android 图标待同步 mipmap」 | 均已完成；如实标注真实缺口 |
+| 20 | Desktop README | `cd avalonia` 后跑 `make-icon.ps1` | `make-icon.ps1` 内部是**绝对路径**，换机器需先改 |
+
+### 如实记录的「文档原本没写」的缺口
+
+| 项 | 说明 |
+|---|---|
+| **快捷键是空壳** | `ShowShortcuts` 只往消息面板打印「Ctrl+G 生成 · Ctrl+D 编辑 …」，**全仓库没有任何 `KeyBinding`**。文档此前未说明这一点 |
+| 「快捷键」按钮不可达 | 该按钮只在**隐藏底栏**里（与 #6/#14 同源）。但因其指向的快捷键是空壳，本轮**未**为它新增入口，仅记录 |
+| 「数据目录」按钮不可达 | 同样只在隐藏底栏。**信息仍可达** —— 设置浮层底部已直接显示 `HomePath` |
+| 「离线」入口隐藏 | 该复选框是 debug 功能（`IMGHUB_DEBUG=1`），且设置里还有一个同名项；旧文档仍教用户「勾选左栏离线」 |
+| `avalonia/` 残留目录 | 重组后只剩 `bin` 缓存，无源码 |
+
+### 新增：`AGENTS.md`（项目级 agent 指引）
+
+仓库此前**没有任何** `AGENTS.md` / `CLAUDE.md` / `.cursorrules`。
+本轮新建根目录 `AGENTS.md`：环境与命令、工作纪律（架构红线 / 两套布局 / 入口可达 /
+清理禁忌 / 提交规范）、改代码去哪、硬约束索引、已知缺口、文档地图。
+
+### 文档结构层面的改进
+
+- `docs/ARCHITECTURE.md` 新增「三处成本数字的口径」与「价格预估 vs 成本估算」两节
+  （`ProviderCost` / `TotalCost` / `UnknownCost` 易混淆，且预估机制已从死表改为按模型统计）
+- `docs/CONSTRAINTS.md` 新增 **D4b（两套布局同步）**、**D4c（入口必须可达）**、
+  **D7（Avalonia 12 移除 ExtendClientAreaChromeHints）**，并在 G 表补 3 条症状
+- `docs/CONSTRAINTS.md` F3 回归测试表补齐（从 6 行扩到 15 行，覆盖本轮与近期新增功能），
+  并加红字提醒：**命令可执行 ≠ UI 有入口**
+- `tests/README.md` 加「测试覆盖不到的一类缺陷」警示
+- `docs/HANDOVER.md` §三 / §五 补「两套布局」「宽窄屏各持一个画布」
+
+### 验证
+
+| 项 | 结果 |
+|---|---|
+| Core 测试 | **56/56** ✅ |
+| 集成测试 | **58/58** ✅ |
+| 合计 | **114/114** ✅（XAML 改动后重跑，无回归） |
+| `ImgHub.App` 编译 | ✅ 0 错误（41 个既有警告，均为 MVVMTK0034 / AVLN5001，与本次改动无关） |
+| legacy 测试 | **959/959** ✅（801 + 42 + 38 + 51 + 27，未改动 legacy） |
+| 人工核对 | ✅ 顶栏设置按钮可见、`OpenSettingsCommand` 有可达入口 |
+| 人工核对 | ✅ 「历史 / 累计」标题行有「导入」按钮，`OnImportClick` 不再是死代码 |
+
+---
+
+## 四·十七、第八轮修复：UI/交互 13 项（v5.23.0，按用户截图标注）
+
+> 完整计划、根因分析与验收见 **[fix-plan-v5.23.md](fix-plan-v5.23.md)**。
+
+### 方法：先实证，再动手
+
+本轮不靠猜测 —— 用三层证据：
+
+1. **静态**：`codegraph` 索引 + 通读 XAML/VM/控件源码
+2. **运行时**：跑 Release 版（`%TEMP%` 下的数据目录**副本**，不碰用户数据）
+3. **UI 探针**：`UIAutomation`（控件树 / `IsEnabled` / `FromPoint`）+ 合成鼠标事件 + 截图
+
+### 🔴 三个"测试全绿但用户用不了"的真实缺陷
+
+| # | 用户报告 | 实测根因 |
+|---|---|---|
+| 1 | 「右键无法点击」 | 探针测得菜单项 `IsEnabled=false`。双重原因：① `ContextMenu` 是弹出层，`$parent[ListBox]` 追溯不到 → `Command=null`；② `ListBox.ItemsSource` 是 `HistoryRow`，而命令参数声明为 `Item` → `CanExecute` 类型检查失败 |
+| 2 | 「编辑图片功能区内，全部无法正常使用」 | `RegionCanvas : Control` **没有 Background**，Avalonia 命中测试基于已绘制几何。无标注时不绘制 → `FromPoint` 返回下层 `Image` → 指针穿透，**怎么画都画不上** |
+| 3 | 「点击编辑图片，图片会上下移动」 | 中栏 `RowDefinitions="Auto,2*,Auto,Auto,Auto"`，`Row3`（工具栏）从 0 高度变出 → `2*` 的预览行被压缩 78px |
+
+**修复**：① 改 `Click` 事件（`DataContext` 天然继承）；② `Render` 起始处
+`ctx.FillRectangle(Brushes.Transparent, …)`；③ 工具栏区域**高度恒定**（112px），
+非编辑态显示引导文案。
+
+### 「就绪」名不副实（用户：「这么多功能都用不了，这里写个就绪？就绪了什么？」）
+
+原实现：`Status` 默认硬编码 `"就绪"`，徽标 `IsVisible="{Binding IsConfigured}"`
+—— 只要有 key 文件就显示「就绪」。
+
+**改为启动自检**：逐项检查（生图 key / 模型合法性 / 数据目录可写 / 润色配置），
+**全通过才写「就绪」**，否则写「未就绪：<首个原因>」，点击可查看详情并跳到设置。
+按用户口径，**润色未配置也算未就绪**（不是"全功能可用"）。
+
+### 其余 9 项
+
+| 项 | 改动 |
+|---|---|
+| 提示词/图片历史**整行**可右键 | `ContextMenu` 移到 DataTemplate 根 `Border` + `Transparent` 背景 |
+| 「仅从列表移除」置前 | 菜单顺序调整（破坏性小的在前） |
+| 删除文件**弹窗确认** | 新增确认浮层（含文件名与「不可恢复」提示） |
+| 历史/提示词**多选批量** | 「多选」开关 + `SelectionMode` 切换 + 批量移除/删除（确认 N 项） |
+| 左栏下拉框字底被裁 | `MinHeight` 32 → **38**（内嵌 Noto Sans SC 行高较大） |
+| 预览路径不对齐 | 右对齐到「编辑图片」左缘 |
+| 「离线」复选框残留 | 删除宽/窄屏两处（debug 功能，改由设置 + `IMGHUB_DEBUG=1`） |
+| 左栏滚动条太挤 | 滚动条列 14 → 18px，内容右边距 6 → 10px |
+| 「用标注编辑」超出边界 | 工具栏改 `WrapPanel` 自动换行 + `MinWidth=96` |
+| 底栏加版本号 | `Directory.Build.props` 统一 `<Version>`；VM 读程序集版本（预留 GitHub 链接） |
+
+### 验证
+
+| 项 | 结果 |
+|---|---|
+| Core 测试 | **56/56** ✅ |
+| 集成测试 | **68/68** ✅（**+10** 项回归） |
+| 合计 | **124/124** ✅ |
+| UI 实测 | ✅ 13 项逐项经 UIAutomation 探针 + 截图确认 |
+| 用户真实数据 | ✅ 未触碰（实测用 `%TEMP%` 副本） |
+
+### 沉淀为新约束（docs/CONSTRAINTS.md）
+
+- **D4d**：`ContextMenu` / 弹出层里不要用 `$parent[...]` 查找命令
+- **D4e**：自绘 `Control` 必须填充透明矩形才可命中
+- G 表新增 3 条症状（右键点不动 / 画不出标注 / 点按钮后预览跳动）
+
+---
+
+---
+
+## 四·十八、第九轮：AOT 修复 + 网络加固 + 分级日志 + 悬停交互（v5.24.0）
+
+> 完整计划与实测见 **[fix-plan-v5.24.md](fix-plan-v5.24.md)**；
+> 踩坑沉淀见 [CONSTRAINTS.md](CONSTRAINTS.md) §H（AOT）与 §I（日志/容错）。
+
+### 🔴 用户报「生成失败」的根因（AOT）
+
+截图错误：
+
+```
+生成失败：Reflection-based serialization has been disabled for this application.
+Either use the source generator APIs or explicitly configure the
+'JsonSerializerOptions.TypeInfoResolver' property.
+```
+
+**用最小 AOT 工程复现，证据决定性**：
+
+```
+A) Dictionary<string,object?> + JsonSerializer.Serialize -> FAIL（与截图一致）
+B) 强类型 POCO + JsonSerializer.Serialize                -> FAIL
+C) JsonObject（System.Text.Json.Nodes）                  -> OK
+D) JsonSerializer.IsReflectionEnabledByDefault           = False   ← 根因
+```
+
+**根因**：Native AOT **默认禁用反射序列化**；`HttpJsonClient.PostJsonAsync` 用了
+`JsonSerializer.Serialize(payload)`（`payload` 是 `Dictionary<string,object?>`）。
+**为什么上传成功而生成失败**：`PostMultipartAsync`（上传）不含 JSON 序列化。
+
+**修复**：
+- 固定结构（`AppConfig`/`ModelStatsFile`）→ **source generation**（`AppJsonContext`）
+- 动态结构（HTTP 体 / `state.json` / JSONL）→ **`JsonObject`**（DOM，AOT 安全）
+- `JsonArray.Add<T>` 泛型重载会刷 IL2026/IL3050 → 新增 `JsonSafe.AddNode/AddString`
+  （走 `IList<JsonNode?>.Add`）→ **AOT 发布 20+ 条警告清零**
+
+> ⚠️ **更正 v5.23.0 的错误结论**：`docs/DELIVERY.md` 曾写
+> 「`IL2026`/`IL3050` 是残留警告（**无害**，功能实测正常）」——
+> 它在框架依赖构建下"看起来正常"，**AOT 产物下直接导致生成不可用**。已更正。
+
+### 🟡 执行中发现的**额外真实缺陷**
+
+| # | 缺陷 | 实测 | 修复 |
+|---|---|---|---|
+| 1 | **4xx 被误重试 3 次**（日志说"不重试"却重试了）→ 违反铁律 C2 | 假 Handler 计数：401 请求 3 次 | `ApiError.Retryable` 显式标记（默认 false）→ 401 只 1 次 |
+| 2 | **XAML 编译错误不阻断 build，但应用启动即崩** | 改悬停样式后 `XamlLoadException`，`dotnet build` 却报成功 | 模板内改 `$parent[UserControl].DataContext.*`；记为约束 **H8** |
+| 3 | **JSONL 用缩进序列化 → 一条记录拆多行 → 历史项数变 0** | 既有测试直接失败 | 分 `ToReadableJson()`（缩进）/ `ToJsonLine()`（单行）→ 约束 **H7** |
+
+### 网络健壮性（N1/N2）
+
+- 新增 `NetworkDiagnostics`：无网络 / DNS / 拒绝 / 重置 / 不可达 / 超时 / TLS / 代理 / 取消
+  **9 类分类**，每类给**具体动作**（例：DNS → "检查网络、DNS 或被代理拦截"）
+- 解包 `HttpRequestException.InnerException`（`SocketException`）找真正原因
+  —— 只看外层只会得到「An error occurred while sending the request」
+- 连接超时（20s）与整体超时分离，避免"卡满 300 秒"
+- 用户取消不当作网络错误；连接类错误退避 ×1.5
+
+### 分级日志（L1/L2，用户追加要求）
+
+- 新增 `AppLog`：**info / warn / error**，落盘 `<数据目录>/log/imghub-yyyy-MM-dd.log`
+  - 按天分文件、追加写、单文件 5 MB 滚动、保留最近 10 个
+  - **每条带位置**（`where`：类名.方法名），异常记 `InnerException` 链
+  - **凭据脱敏**（`sk-or-v1-abc***`），key 绝不落盘
+  - 写盘失败绝不抛（降级内存，保留 500 条）
+- **消除所有静默 `catch { }`**（Core 的 `Session`/`ModelStatsService` + VM 各处）
+  → 改为 `AppLog.*` + 位置。**这正是 AOT bug 难以定位的元凶**（约束 I1）
+- 设置里新增「打开日志目录」按钮
+
+### 悬停交互（U1/U2/U3，用户追加要求）
+
+- `hoverfx` 样式：只过渡 `Background`/`Opacity`（**不动尺寸**，避免布局抖动）；
+  新增 `AppHoverBrush`（浅/深两套）
+- 新增 `Help.Tip` 附加属性 → **61 个按钮全覆盖**（59 个带具体说明），
+  文案说清"点了会发生什么"
+- 设置「界面选项」新增 2 个开关：**按钮悬停动画** / **悬停弹出说明**（持久化）
+
+### 验证
+
+| 项 | 结果 |
+|---|---|
+| Core 测试 | **81/81** ✅（**+25**） |
+| 集成测试 | **68/68** ✅ |
+| 合计 | **149/149** ✅ |
+| AOT 发布 | ✅ **零 IL 警告**，31.06 MB exe |
+| AOT 实跑 | ✅ 离线生成 2 张 + 4 个 JSON 文件全正确 |
+| AOT 真实请求 | ✅ 请求发出、4xx 只重试 1 次 |
+| UI 实测 | ✅ ToolTip 弹出 / 关闭后不弹 / 两个开关就位 |
+| 用户真实数据 | ✅ 未触碰（`%TEMP%` 副本） |
+
+---
+
 ## 五、如何运行与测试
 
 ```powershell
-cd D:\Project\imagagent\Imagagent\avalonia
+# 在仓库根目录执行（早期文档写的是 avalonia/，已重组到根）
 
 # 全部单元测试（Core）
-dotnet test tests\Imgagent.Core.Tests\Imgagent.Core.Tests.csproj
+dotnet test tests\ImgHub.Core.Tests\ImgHub.Core.Tests.csproj
 
 # 端到端集成测试（离线，不花钱）
-dotnet test tests\Imgagent.Integration.Tests\Imgagent.Integration.Tests.csproj
+dotnet test tests\ImgHub.Integration.Tests\ImgHub.Integration.Tests.csproj
 
 # 运行桌面工作台
-dotnet run --project src\Imgagent.Desktop
+dotnet run --project src\ImgHub.Desktop
 
-# ── 打包（三级，按需选择）────────────────────────
-# L2 推荐：单文件 + 裁剪（41 MB 单 exe）
-dotnet publish src\Imgagent.Desktop -c Release -r win-x64 --self-contained true ^
-  -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true ^
+# ── 打包 ────────────────────────────────────────
+# 框架依赖桌面版 + Android APK（build.ps1 的全部目标）
+powershell -File build.ps1
+
+# L3 Native AOT（30.6 MB exe + 3 原生 DLL，启动最快）
+dotnet publish src\ImgHub.Desktop -c Release -r win-x64 `
+  -p:PublishAot=true -p:DebugType=none -p:DebugSymbols=false -o release\desktop-aot
+
+# L2 单文件 + 裁剪（约 41 MB 单 exe）
+dotnet publish src\ImgHub.Desktop -c Release -r win-x64 --self-contained true `
+  -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
   -p:PublishTrimmed=true -p:TrimMode=partial -p:DebugType=none -p:DebugSymbols=false
 
-# L3 Native AOT（22.9 MB exe + 3 原生 DLL，启动最快）
-dotnet publish src\Imgagent.Desktop -c Release -r win-x64 ^
-  -p:PublishAot=true -p:PublishSingleFile=true -p:DebugType=none -p:DebugSymbols=false
-
 # 离线跑（不联网不花钱）
-$env:IMGAGENT_HOME="$env:TEMP\imgagent-demo"; dotnet run --project src\Imgagent.Desktop
+$env:IMGHUB_HOME="$env:TEMP\imghub-demo"; dotnet run --project src\ImgHub.Desktop
 ```
 
-**数据目录**：Windows 默认 `%LOCALAPPDATA%\imgagent`；可用 `IMGAGENT_HOME` 覆盖。
+**数据目录**：Windows 默认 `%LOCALAPPDATA%\imghub`；可用 `IMGHUB_HOME` 覆盖。
+
+> 📛 **v0.5.28 改名兼容**：项目由 `Imgagent` 改名为 `ImgHub`。
+> 为不丢用户数据，以下旧位置**仍会被读取**（新位置优先，旧位置回退）：
+> · 数据目录 `%LOCALAPPDATA%\imgagent`（若新目录不存在则**直接沿用**，数据无需搬迁）
+> · key 文件 `.imgagent_key` / `.imgagent_apimart_key` / `.imgagent_polish_key`
+> · 环境变量 `IMGHUB_HOME` ← 也接受 `IMGAGENT_HOME`；`IMGHUB_*_API_KEY` ← 也接受 `IMGAGENT_*`
+>
+> ⚠️ 所以 `AppPaths.LegacyDirName*` 与 `Session.LegacyKeyFile` / `ReadKeyFileCompat`
+> **不是残留代码** —— 删除会导致用户图库与 key"凭空消失"。已由
+> `RenameCompatibilityTests`（Core）与 `RenamePathTests`（集成）锁定。
 
 ---
 
 ## 六、下一步建议优先级
 
-1. **解除 Android 构建**（管理员装 workload）→ 跑真机中文验证（1–2 天）
-2. 设置页（provider / key / 润色配置）—— 原版的 `do_settings` 平移
-3. 润色候选选择 UI（原版 `_pick_pages` 的图形化）
-4. 响应式布局：宽屏三栏 / 手机竖屏纵向堆叠（原版 `_WIDE_COLS` 逻辑）
-5. 环境诊断面板（原版 `doctor.py`）
+1. **Android 真机验证**（中文渲染 + 软键盘/IME 交互）—— 需设备
+2. 环境诊断面板（原版 `doctor.py`）／可考虑把日志查看做进 UI
+3. 绑定真实快捷键（当前「快捷键」按钮只打印文案，无实际键位）
+4. ~~`Session`/`HttpJsonClient` 迁移到 System.Text.Json **source generation**，
+   彻底消除 AOT 的 `IL2026`/`IL3050` 警告~~ ✅ **v5.24.0 已完成**
+5. 缩略图 LRU 缓存（列表 > 200 条时）

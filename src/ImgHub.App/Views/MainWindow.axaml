@@ -1,0 +1,85 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:ImgHub.App.Views"
+        xmlns:vm="using:ImgHub.App.ViewModels"
+        xmlns:ui="using:ImgHub.App.Ui"
+        x:Class="ImgHub.App.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Icon="avares://ImgHub.App/Assets/app-icon.png"
+        Width="1180" Height="760" MinWidth="360" MinHeight="480"
+        Title="ImgHub 工作台"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="40"
+        SystemDecorations="None"
+        Background="Transparent">
+  <Border CornerRadius="10" ClipToBounds="True"
+          BorderBrush="{DynamicResource AppBorderStrongBrush}" BorderThickness="1"
+          Background="{DynamicResource AppBgBrush}">
+    <Grid RowDefinitions="40,*">
+
+      <!-- ============ 自绘标题栏（仿 Reasonix：浅色、扁平、与内容一体）============ -->
+      <Border Grid.Row="0" Name="TitleBar" Background="{DynamicResource AppSurfaceBrush}"
+              BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="0,0,0,1">
+        <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,0,6,0">
+
+          <!-- 左：图标 + 标题 -->
+          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8"
+                      VerticalAlignment="Center">
+            <Image Source="avares://ImgHub.App/Assets/app-icon.png"
+                   Width="20" Height="20" VerticalAlignment="Center"/>
+            <TextBlock Text="{CompiledBinding L[app.title]}" FontSize="13" FontWeight="SemiBold"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource AppTextBrush}"/>
+            <!-- v5.25.0：删掉这里的 Status —— 顶栏已有「自检徽标」，
+                 两处重复显示同一状态反而造成"两个就绪"的困惑。 -->
+          </StackPanel>
+
+          <!-- 中：拖拽区（透明，用于拖动窗口） -->
+          <Border Grid.Column="1" Name="TitleBarDragArea" Background="Transparent"/>
+
+          <!-- 右：窗口控制按钮。v0.5.37：改用**内嵌**图标字体（原 Segoe MDL2 是微软专有字体）。
+               注：这些按钮只在桌面窗口出现（Android 走 ISingleViewApplicationLifetime，无标题栏），
+               但仍统一风格 —— 也避免"专有字体"这个隐患留在代码里。 -->
+          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2"
+                      VerticalAlignment="Center">
+            <Button Classes="titlebar" Click="OnMinimizeClick" ToolTip.Tip="{CompiledBinding L[window.minimize]}">
+              <TextBlock Classes="icon small" Text="&#xE931;"/>
+            </Button>
+            <Button Classes="titlebar" Click="OnMaximizeClick" ToolTip.Tip="{CompiledBinding L[window.maximize]}">
+              <TextBlock Classes="icon small" Text="&#xE930;"/>
+            </Button>
+            <Button Classes="titlebar close" Click="OnCloseClick" ToolTip.Tip="{CompiledBinding L[common.close]}">
+              <TextBlock Classes="icon small" Text="&#xE5CD;"/>
+            </Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- 主内容 -->
+      <views:MainView Grid.Row="1"/>
+
+      <!-- ⚠️ v0.5.39 用户要求（#5）：**对角拖拽缩放**。
+           根因：窗口设了 `SystemDecorations="None"`（自绘标题栏）→ **系统边框的 resize 热区不存在**；
+           外层 Border 的 CornerRadius+ClipToBounds 又把四角盖住 → 用户发现"不能对角拖拽缩放"。
+           修法：在最上层叠一圈**不可见热区**（四边 6px + 四角 12px），
+           由 code-behind 用 `BeginResizeDrag(edge, e)` 触发**原生**缩放。
+           布局本身是 Grid 自适应 → 缩放时**控件位置关系不变、按比例重排**。
+
+           ⚠️ 三条关键（改这里时务必保持）：
+             1. 必须**最后声明**（叠在最上层）——否则被 TitleBar/MainView 盖住，热区失效；
+             2. 这个 Grid **不要设 Background**，只有子 Border 设 Transparent
+                （否则整块区域都会命中最上层、吃掉所有内容点击）；
+             3. 只有 6/12px 的细边，不遮挡内容交互。 -->
+      <Grid Grid.Row="0" Grid.RowSpan="2" Name="ResizeLayer" Panel.ZIndex="100">
+        <Border Name="ResizeN"  Height="6"  VerticalAlignment="Top"    Background="Transparent" Cursor="SizeNorthSouth"/>
+        <Border Name="ResizeS"  Height="6"  VerticalAlignment="Bottom" Background="Transparent" Cursor="SizeNorthSouth"/>
+        <Border Name="ResizeW"  Width="6"   HorizontalAlignment="Left"  Background="Transparent" Cursor="SizeWestEast"/>
+        <Border Name="ResizeE"  Width="6"   HorizontalAlignment="Right" Background="Transparent" Cursor="SizeWestEast"/>
+        <Border Name="ResizeNW" Width="12" Height="12" HorizontalAlignment="Left"  VerticalAlignment="Top"    Background="Transparent" Cursor="TopLeftCorner"/>
+        <Border Name="ResizeNE" Width="12" Height="12" HorizontalAlignment="Right" VerticalAlignment="Top"    Background="Transparent" Cursor="TopRightCorner"/>
+        <Border Name="ResizeSW" Width="12" Height="12" HorizontalAlignment="Left"  VerticalAlignment="Bottom" Background="Transparent" Cursor="BottomLeftCorner"/>
+        <Border Name="ResizeSE" Width="12" Height="12" HorizontalAlignment="Right" VerticalAlignment="Bottom" Background="Transparent" Cursor="BottomRightCorner"/>
+      </Grid>
+    </Grid>
+  </Border>
+</Window>

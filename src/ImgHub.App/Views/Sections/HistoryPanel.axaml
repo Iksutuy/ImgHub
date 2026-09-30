@@ -1,0 +1,116 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ImgHub.App.ViewModels"
+             xmlns:ui="using:ImgHub.App.Ui"
+             x:Class="ImgHub.App.Views.Sections.HistoryPanel"
+             x:DataType="vm:MainViewModel"
+             x:Name="Root">
+  <!--
+    历史 / 累计面板（Plan A / v0.5.28 抽出）。
+
+    为什么要抽：宽屏与窄屏各写了一份「标题 + 多选按钮 + ListBox + 总累计」，
+    重复度实测 49%。抽成 Section 后改一处两端生效。
+
+    ⚠️ 为什么用「事件回调」而不是「命令绑定」（review 时的重要修正）：
+       原处理器并非纯转发，而是读 View 层状态：
+         · OnDeleteSelectedHistoryClick → SelectedHistoryRows() 读两个 ListBox 的 SelectedItems
+         · OnRemoveSelectedHistoryClick → 同上 + ClearListSelection(...)
+         · OnToggleHistoryMultiClick    → ClearListSelection(HistoryList, HistoryListNarrow)
+       这些副作用只存在于 View 层。若改成命令绑定到 VM，就会**静默丢掉清选择等逻辑**。
+       所以 Section 只抛事件（DeleteSelectedRequested 等），由主 View 用原有处理器处理。
+
+    ⚠️ 两套布局的差异用依赖属性吸收，而不是在 XAML 里写 if：
+      · ListHeight      —— 宽屏自适应(double.NaN)，窄屏固定 240
+      · ShowUnknownCost —— 宽屏显示「含未归类旧数据」，窄屏不显示
+  -->
+  <!--
+    ⚠️ 行定义必须是 Auto,*,Auto（v0.5.29 修回归）：
+       初版写成 Auto,Auto,Auto —— ListBox 的 Height 绑到 ListHeight，
+       宽屏 ListHeight=NaN 时 ListBox 会**按内容撑高**，把第 2 行的
+       「总累计」挤出可视区（用户报问题 1：历史累计花费没了）。
+       改成 `*` 后 ListBox 只占剩余空间，总累计固定在第 2 行可见。
+  -->
+  <Grid RowDefinitions="Auto,*,Auto">
+    <!-- 标题行 + 多选批量操作 -->
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+      <TextBlock Grid.Column="0" Text="{CompiledBinding L[hist.title]}" Classes="section"
+                 VerticalAlignment="Center"/>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+        <Button  Classes="toolbar" Padding="8,3"
+                Classes.hoverfx="{CompiledBinding EnableHoverAnimation}"
+                IsVisible="{CompiledBinding HistoryMultiSelect}"
+                Click="OnDeleteSelectedClick"
+                ToolTip.Tip="{CompiledBinding L[hist.deleteSelectedTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon small" Text="&#xE872;"/><TextBlock Classes="iconText small" Text="{CompiledBinding L[action.deleteSelected]}" VerticalAlignment="Center"/></StackPanel></Button>
+        <Button  Classes="toolbar" Padding="8,3"
+                Classes.hoverfx="{CompiledBinding EnableHoverAnimation}"
+                IsVisible="{CompiledBinding HistoryMultiSelect}"
+                Click="OnRemoveSelectedClick"
+                ToolTip.Tip="{CompiledBinding L[hist.removeSelectedTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon small" Text="&#xE15B;"/><TextBlock Classes="iconText small" Text="{CompiledBinding L[hist.removeSelected]}" VerticalAlignment="Center"/></StackPanel></Button>
+        <Button Classes="toolbar" Padding="8,3"
+                Classes.hoverfx="{CompiledBinding EnableHoverAnimation}"
+                Click="OnToggleMultiClick"
+                ToolTip.Tip="{CompiledBinding L[hist.multiTip]}">
+          <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+            <TextBlock Classes="icon small" Text="&#xE413;"/>
+            <TextBlock Classes="iconText small" Text="{CompiledBinding HistoryMultiButtonText}" VerticalAlignment="Center"/>
+          </StackPanel>
+        </Button>
+        <Button Classes="toolbar" Padding="8,3"
+                Classes.hoverfx="{CompiledBinding EnableHoverAnimation}"
+                Click="OnImportClick"
+                ToolTip.Tip="{CompiledBinding L[hist.importTip]}"><StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center"><TextBlock Classes="icon small" Text="&#xE89E;"/><TextBlock Classes="iconText small" Text="{CompiledBinding L[hist.import]}" VerticalAlignment="Center"/></StackPanel></Button>
+      </StackPanel>
+    </Grid>
+
+    <ListBox x:Name="HistoryListBox" Grid.Row="1" ItemsSource="{CompiledBinding History}"
+             CornerRadius="8"
+             Height="{CompiledBinding ListHeight, ElementName=Root}"
+             SelectionChanged="OnListSelectionChanged"
+             SelectionMode="{CompiledBinding HistorySelectionMode}">
+      <ListBox.ItemTemplate>
+        <!-- ⚠️ Plan B：DataTemplate 的 DataContext 是**列表项类型**（HistoryRow），
+             不是根 UserControl 的 MainViewModel → 必须单独声明 x:DataType，
+             否则 {CompiledBinding Thumb/Prompt/File/Cost} 无法解析。 -->
+        <DataTemplate x:DataType="vm:HistoryRow">
+          <!-- ContextMenu 挂在 DataTemplate 根容器（Transparent 背景）→
+               整行（含缩略图 / 空白 / 费用列）都能弹出菜单 -->
+          <Border Background="Transparent">
+            <Border.ContextMenu>
+              <ContextMenu>
+                <!-- ⚠️ v0.5.40：同 MainView —— ContextMenu 不继承 DataContext，
+                     编译绑定取不到 VM 的 `L`；改用经典绑定 + 显式 Source。 -->
+                <MenuItem Header="{Binding [hist.removeOneTip], Source={x:Static ui:Localizer.Instance}}"
+                          Click="OnRowRemoveFromListClick"/>
+                <MenuItem Header="{Binding [hist.deleteOneTip], Source={x:Static ui:Localizer.Instance}}"
+                          Click="OnRowDeleteClick"/>
+              </ContextMenu>
+            </Border.ContextMenu>
+            <Grid ColumnDefinitions="46,*,Auto" Margin="0,2">
+              <Border Grid.Column="0" Width="40" Height="40" CornerRadius="6" Margin="0,0,8,0"
+                      Background="{DynamicResource AppSurfaceAltBrush}">
+                <Image Source="{CompiledBinding Thumb}" Stretch="UniformToFill"/>
+              </Border>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Text="{CompiledBinding Prompt}" FontSize="12.5"
+                           TextTrimming="CharacterEllipsis" ToolTip.Tip="{CompiledBinding Prompt}"/>
+                <TextBlock Text="{CompiledBinding File}" Classes="dim" TextTrimming="CharacterEllipsis"/>
+              </StackPanel>
+              <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="12"
+                         Foreground="{DynamicResource AppCostBrush}"
+                         Text="{CompiledBinding Cost, StringFormat='${0:0.0000}'}"/>
+            </Grid>
+          </Border>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+
+    <TextBlock Grid.Row="2" Margin="0,8,0,0" FontWeight="SemiBold" FontSize="13"
+               Foreground="{DynamicResource AppOkBrush}"
+               Text="{CompiledBinding TotalCost, StringFormat='总累计 ${0:0.0000}'}"
+               ToolTip.Tip="{CompiledBinding L[hist.totalTip]}"/>
+    <TextBlock Grid.Row="2" Margin="0,30,0,0" Classes="dim"
+               IsVisible="{Binding ShowUnknownCost, ElementName=Root}"
+               Text="{CompiledBinding UnknownCost, StringFormat='（含未归类旧数据 ${0:0.0000}）'}"
+               ToolTip.Tip="{CompiledBinding L[hist.unknownTip]}"/>
+  </Grid>
+</UserControl>

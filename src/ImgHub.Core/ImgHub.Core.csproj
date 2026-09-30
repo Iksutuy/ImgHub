@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- 平台无关的核心层：Models + Services。
+       不引用任何 UI / 平台类型（Avalonia/Android 都不引用），
+       因此可在桌面、Android、甚至单元测试宿主里复用。 -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>ImgHub.Core</RootNamespace>
+    <AssemblyName>ImgHub.Core</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- SkiaSharp 是跨平台图像库（非 UI 框架），用于 PNG/JPEG/WEBP 编解码 -->
+    <PackageReference Include="SkiaSharp" Version="3.119.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- AppJson（source-gen 上下文）是 internal：测试需要直接验证序列化契约
+         （snake_case、宽松读取），故开放给测试工程可见。 -->
+    <InternalsVisibleTo Include="ImgHub.Core.Tests" />
+  </ItemGroup>
+
+</Project>

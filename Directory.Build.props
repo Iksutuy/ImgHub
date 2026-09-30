@@ -4,7 +4,19 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- Roslyn 分析器（编译器本身就是 Roslyn：SDK 的 csc.exe）。
+         AnalysisMode=All 打开全部 CAxxxx 规则；实测只增加约 4% 构建时间。
+         规则取舍（哪些降级、为什么）见根目录 .editorconfig。
+         注意：警告不阻断构建（TreatWarningsAsErrors=false），存量警告可分批清理。 -->
+    <AnalysisMode>All</AnalysisMode>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <!-- Avalonia 12.1.2：最新正式版，同时支持 net10.0（桌面）与 net10.0-android -->
     <AvaloniaVersion>12.1.2</AvaloniaVersion>
+    <!-- P13：统一版本号（唯一真源）。UI 底栏与 Android ApplicationDisplayVersion 都以此为准。
+         改版本时只改这里；Android csproj 的 ApplicationDisplayVersion 需同步（见 docs/DELIVERY.md）。 -->
+    <Version>0.5.43</Version>
+    <!-- 填上仓库地址后，UI 底栏的版本号可点击跳转 GitHub（留空 = 纯文本）。
+         首次发布前把 YOUR_GITHUB_USER 换成你的 GitHub 用户名。 -->
+    <RepositoryUrl>https://github.com/YOUR_GITHUB_USER/ImgHub</RepositoryUrl>
   </PropertyGroup>
 </Project>

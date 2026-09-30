@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Android head：net10.0-android（API 36）。
+       构建前置：dotnet workload install android + Android SDK/JDK（建议装用户目录）。
+       详见 ../docs/DELIVERY.md 与 README.md。 -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-android</TargetFramework>
+    <SupportedOSPlatformVersion>23</SupportedOSPlatformVersion>
+    <Nullable>enable</Nullable>
+    <ApplicationId>com.imghub.app</ApplicationId>
+    <ApplicationVersion>6</ApplicationVersion>
+    <!-- P13：与 Directory.Build.props 的 <Version> 保持一致（改版本要同步两处） -->
+    <ApplicationDisplayVersion>0.5.43</ApplicationDisplayVersion>
+    <AndroidPackageFormat>apk</AndroidPackageFormat>
+    <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
+    <!-- 图标走 Resources/mipmap-*（多密度 + 自适应），见 tools/make-android-icons.ps1 -->
+    <AndroidUseDefaultAppIcon>false</AndroidUseDefaultAppIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Android" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.0.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ImgHub.App\ImgHub.App.csproj" />
+  </ItemGroup>
+
+  <!-- Resources/** 由 Android SDK 自动收集（含 mipmap 各密度与 values 资源） -->
+
+</Project>

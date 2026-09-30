@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ImgHub.App.ViewModels"
+             x:Class="ImgHub.App.Views.Sections.MessagePanel"
+             x:DataType="vm:MainViewModel">
+  <!--
+    消息**列表**（Plan A / v0.5.28 抽出；v0.5.29 修正为"只含列表"）。
+
+    ⚠️ 为什么不含「消息」标题（v0.5.29 修回归）：
+       初版把标题 + 列表都放在这里，而整个 Section 被塞进 `ScrollViewer`，
+       导致**标题跟着日志一起滚动**（用户报问题 4）。
+       现在标题由主 View 放在 ScrollViewer **外面**，本 Section 只含列表。
+
+    ⚠️ 为什么不加内层 Grid(RowDefinitions="Auto,*")（v0.5.29 修回归）：
+       初版有那层 Grid，其 `*` 行会**撑满视口** → ScrollViewer 的
+       `Extent.Height` 与 `Viewport.Height` 恒等 → 「是否贴底」判断失真 →
+       **贴在底部时新日志不再自动滚动**（用户报问题 5）。
+       现在本 Section 的根就是 ItemsControl，Extent 由真实内容决定。
+
+    ⚠️ 根节点必须有 x:DataType：否则 {Binding} 退化为反射绑定
+       （编译期不检查，AOT 下有隐患 —— CONSTRAINTS H1）。
+  -->
+  <ItemsControl ItemsSource="{CompiledBinding Messages}">
+    <ItemsControl.ItemTemplate>
+      <!-- ⚠️ Plan B：DataTemplate 的 DataContext 是**列表项类型**（Message），
+           不是根 UserControl 的 MainViewModel → 必须单独声明 x:DataType。
+           Message 是 MainViewModel 的嵌套 record → 用 '+' 引用。 -->
+      <DataTemplate x:DataType="vm:MainViewModel+Message">
+        <TextBlock TextWrapping="Wrap" FontSize="12.5" Margin="0,0,0,4">
+          <Run Text="{CompiledBinding Time}" Foreground="{DynamicResource AppTextDimBrush}"/>
+          <Run Text=" "/>
+          <Run Text="{CompiledBinding Text}" Foreground="{DynamicResource AppTextBrush}"/>
+        </TextBlock>
+      </DataTemplate>
+    </ItemsControl.ItemTemplate>
+  </ItemsControl>
+</UserControl>
