@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 安全问题（请不要公开提交 issue）
+    url: https://github.com/YOUR_GITHUB_USER/ImgHub/security/advisories/new
+    about: 涉及 API key 泄露、路径穿越等安全问题的，请走私密渠道，见 SECURITY.md
+  - name: 使用与排错文档
+    url: https://github.com/YOUR_GITHUB_USER/ImgHub/blob/master/docs/HANDOVER.md
+    about: 跑不起来 / 改功能去哪 / 出问题查什么 —— 先看这份

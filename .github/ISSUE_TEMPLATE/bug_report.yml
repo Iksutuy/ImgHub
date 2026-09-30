@@ -1,0 +1,97 @@
+name: Bug 报告
+description: 报告一个可复现的缺陷
+title: '[Bug] '
+labels: ['bug', 'status:needs-triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请先做两件事，能省掉一轮来回：
+        1. 搜索已有 issue（含已关闭的）是否重复；
+        2. 若与「生成结果不相关 / 蒙版不生效」有关，先看 [`docs/fix-plan-v5.28.md`](../blob/master/docs/fix-plan-v5.28.md)。
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 平台
+      options:
+        - Windows（桌面）
+        - Android
+        - Linux / macOS（未官方支持）
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: 应用版本
+      description: 设置浮层底部显示的版本号
+      placeholder: 例如 0.5.43
+    validations:
+      required: true
+
+  - type: input
+    id: provider
+    attributes:
+      label: Provider 与模型
+      placeholder: 例如 APIMart / gpt-image-1
+    validations:
+      required: true
+
+  - type: dropdown
+    id: build
+    attributes:
+      label: 构建方式
+      description: AOT 产物与 `dotnet run` 是两套运行时约束，很多问题只在其中一种出现。
+      options:
+        - Native AOT 产物（release/desktop-aot，解压即用）
+        - 框架依赖产物（build.ps1 -Target desktop）
+        - 源码运行（dotnet run --project src/ImgHub.Desktop）
+        - Android APK
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 打开……
+        2. 选择……并输入……
+        3. 点击「生成」
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志
+      description: |
+        设置浮层 →「打开日志目录」→ `log/imghub-<日期>.log`。
+        日志已做凭据脱敏，可直接粘贴，但请再扫一眼确认没有你自己的 key。
+        需要更细的诊断细节时，先设 `IMGHUB_LOG_DEBUG=1` 再复现。
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 截图 / 录屏
+      description: 若是 UI 或标注画布问题，截图几乎是必需的 —— 文字描述经常无法定位。
+    validations:
+      required: false
