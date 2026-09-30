@@ -11,6 +11,11 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <!-- ImgHub.Core 用 SkiaSharp 编解码，而 `SkiaSharp` 包**只自带 Win32 / macOS
+         的原生库，没有 Linux**。CI 在 ubuntu 上跑 Core 测试会因找不到
+         libSkiaSharp.so 而整批失败，故这里显式补 Linux 原生资产。
+         （集成测试项目经由 Avalonia.Skia 间接拿到过，Core.Tests 没有。） -->
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.119.4" />
   </ItemGroup>
 
   <ItemGroup>

@@ -25,8 +25,13 @@ dist/
 # Android
 *.keystore
 *.jks
-# 生成的 ico（由 make-icon.ps1 从 PNG 生成）
-src/ImgHub.Desktop/app.ico
+# ⚠️ app.ico **必须入库**（虽然它由 make-icon.ps1 从 PNG 生成）：
+#    · ImgHub.Desktop.csproj 的 <ApplicationIcon>app.ico</ApplicationIcon> 指向它，
+#      缺文件时构建直接失败（Avalonia GenerateAvaloniaResourcesTask MSB4018）；
+#    · ExeIconContractTests 也以它为"契约样本"断言 ICO 格式。
+#    所以这里是"生成物但属必需输入"，不能忽略 —— 忽略过的后果是
+#    干净 clone 完全无法构建（本地因文件已存在而看不出来）。
+# 重新生成：powershell -File make-icon.ps1
 
 # ============================================================ 运行时数据（绝不入库）
 # 可能被误提交的用户数据目录
