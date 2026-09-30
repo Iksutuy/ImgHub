@@ -131,9 +131,40 @@ Step "Packaging into $out"
 if (Test-Path $out) { Remove-Item $out -Recurse -Force }
 New-Item -ItemType Directory -Path $out -Force | Out-Null
 
-$zip = Join-Path $out "imghub-$ver-win-x64.zip"
-Compress-Archive -Path (Join-Path $aotDir "*") -DestinationPath $zip -CompressionLevel Optimal
-if ($LASTEXITCODE -ne 0 -and -not (Test-Path $zip)) { Fail "Compress-Archive failed" }
+# Package from an explicit ALLOW-LIST, not "everything in the folder".
+# WHY: the AOT output directory collects things that must not ship --
+#   * third-party *.pdb (SkiaSharp ~80 MB, HarfBuzz ~20 MB): the publish sets
+#     DebugSymbols=false for ImgHub's own binary, but the native packages drop
+#     their own symbols next to the DLLs. Zipping verbatim made a 52 MB
+#     download where half was debug symbols.
+#   * stray archives left in the folder by hand (a desktop-aot.rar appeared
+#     this way and rode along in the first build of the package).
+# An allow-list fails loudly on surprise content instead of silently shipping it.
+$stage = Join-Path $env:TEMP ("imghub-stage-" + [Guid]::NewGuid().ToString("N"))
+New-Item -ItemType Directory -Path $stage -Force | Out-Null
+try {
+    $ship = @("ImgHub.Desktop.exe") + $required
+    foreach ($name in $ship) {
+        $src = Join-Path $aotDir $name
+        if (-not (Test-Path $src)) { Fail "missing required file: $name" }
+        Copy-Item $src (Join-Path $stage $name) -Force
+        Write-Host ("  ship {0,-24} {1,8:N2} MB" -f $name, ((Get-Item $src).Length / 1MB))
+    }
+
+    # Anything else in the folder is deliberately not shipped -- report it so a
+    # surprise file is visible in the log rather than silently dropped.
+    foreach ($f in (Get-ChildItem $aotDir -File)) {
+        if ($ship -notcontains $f.Name) {
+            Write-Host ("  skip {0,-24} {1,8:N2} MB" -f $f.Name, ($f.Length / 1MB)) -ForegroundColor DarkGray
+        }
+    }
+
+    $zip = Join-Path $out "imghub-$ver-win-x64.zip"
+    Compress-Archive -Path (Join-Path $stage "*") -DestinationPath $zip -CompressionLevel Optimal
+    if ($LASTEXITCODE -ne 0 -and -not (Test-Path $zip)) { Fail "Compress-Archive failed" }
+} finally {
+    if (Test-Path $stage) { Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue }
+}
 
 $apkDest = Join-Path $out "imghub-$ver-android.apk"
 Copy-Item $apk.FullName $apkDest -Force
