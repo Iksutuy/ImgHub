@@ -55,7 +55,7 @@
 ## 从源码构建
 
 ```powershell
-git clone https://github.com/YOUR_GITHUB_USER/ImgHub.git
+git clone https://github.com/Iksutuy/ImgHub.git
 cd ImgHub
 dotnet test tests\ImgHub.Core.Tests           # 236 项，离线
 dotnet test tests\ImgHub.Integration.Tests    # 213 项，离线

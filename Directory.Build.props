@@ -15,8 +15,8 @@
     <!-- P13：统一版本号（唯一真源）。UI 底栏与 Android ApplicationDisplayVersion 都以此为准。
          改版本时只改这里；Android csproj 的 ApplicationDisplayVersion 需同步（见 docs/DELIVERY.md）。 -->
     <Version>0.5.43</Version>
-    <!-- 填上仓库地址后，UI 底栏的版本号可点击跳转 GitHub（留空 = 纯文本）。
-         首次发布前把 YOUR_GITHUB_USER 换成你的 GitHub 用户名。 -->
-    <RepositoryUrl>https://github.com/YOUR_GITHUB_USER/ImgHub</RepositoryUrl>
+    <!-- 仓库地址（标准元数据）。注意：目前**没有代码读取它** ——
+         UI 底栏的版本号是纯文本 TextBlock，不可点击。详见 docs/DELIVERY.md 第五节。 -->
+    <RepositoryUrl>https://github.com/Iksutuy/ImgHub</RepositoryUrl>
   </PropertyGroup>
 </Project>

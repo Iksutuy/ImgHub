@@ -5,7 +5,7 @@
 **请不要开公开 issue。**
 
 请用 GitHub 的私密渠道：
-**[Security Advisories → Report a vulnerability](https://github.com/YOUR_GITHUB_USER/ImgHub/security/advisories/new)**
+**[Security Advisories → Report a vulnerability](https://github.com/Iksutuy/ImgHub/security/advisories/new)**
 
 请附上：影响版本、复现步骤、实际影响，以及（若有）PoC。
 

@@ -279,5 +279,5 @@
   （959 项 Python 测试），**不是死代码**。
 - 五个生图 provider：OpenRouter / APIMart / OpenAI 官方 / 千问 DashScope / 即梦（火山引擎）。
 
-[Unreleased]: https://github.com/YOUR_GITHUB_USER/ImgHub/compare/v0.5.43...HEAD
-[0.5.43]: https://github.com/YOUR_GITHUB_USER/ImgHub/releases/tag/v0.5.43
+[Unreleased]: https://github.com/Iksutuy/ImgHub/compare/v0.5.43...HEAD
+[0.5.43]: https://github.com/Iksutuy/ImgHub/releases/tag/v0.5.43

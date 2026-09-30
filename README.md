@@ -8,9 +8,9 @@
 ![Avalonia](https://img.shields.io/badge/Avalonia-12.1.2-8B44AC)
 ![License](https://img.shields.io/badge/license-GPL--3.0-blue)
 ![Version](https://img.shields.io/badge/version-0.5.43-blue)
-[![CI](https://github.com/YOUR_GITHUB_USER/ImgHub/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB_USER/ImgHub/actions/workflows/ci.yml)
+[![CI](https://github.com/Iksutuy/ImgHub/actions/workflows/ci.yml/badge.svg)](https://github.com/Iksutuy/ImgHub/actions/workflows/ci.yml)
 
-> 📦 下载：**Windows 桌面版** 与 **Android APK** 见 [Releases](https://github.com/YOUR_GITHUB_USER/ImgHub/releases)（仓库不入库构建产物）。
+> 📦 下载：**Windows 桌面版** 与 **Android APK** 见 [Releases](https://github.com/Iksutuy/ImgHub/releases)（仓库不入库构建产物）。
 
 ---
 

@@ -42,8 +42,8 @@
 | **[FEATURES.md](FEATURES.md)** | **目前已实现的全部功能清单**：按「用户能做什么」组织，含入口/业务 API/状态归属 + **本轮可用性实测** + **已实现但当前不可达的 10 项** | **要重写 UI 时先读这份** |
 | **[ui-rewrite-fixplan.md](ui-rewrite-fixplan.md)** | **重写 UI 的配套修复 plan**：P0（正确性缺陷 8 项）/ P1（解耦 7 项）/ P2（降熵 2 项），每条含证据+改法+回归防护 | **重写 UI 前的施工图** |
 | **[code-review-v0.5.37.md](code-review-v0.5.37.md)** | **多维度代码审查**（正确性/回归、安全、架构债、UI 一致性、测试覆盖）：本轮修复 3 个缺陷（Content 覆盖图标、绑定式 Content 被误删、`TryOwnerOnly` 注释误导）+ 5 条待决债务 + 2 条新增硬约束 | 接手前扫一眼"待决"表 |
-
 | **[i18n.md](i18n.md)** | **多语言（中/英/日）**：方案选型（为何弃 .resx / DynamicResource）+ **3 个不报错的坑**（索引器绑定 / 通知格式 / ContextMenu）+ 新增文案的步骤 | **改界面文案前必读** |
+
 **建议顺序**：HANDOVER → ARCHITECTURE → CONSTRAINTS → DELIVERY
 
 ---
@@ -68,7 +68,7 @@ ImgHub.Desktop / ImgHub.Android    各平台 head（只做平台适配）
 ```powershell
 # 在仓库根目录执行
 
-# 跑测试（445 项：Core 236 + 集成 209）
+# 跑测试（449 项：Core 236 + 集成 213）
 dotnet test tests\ImgHub.Core.Tests
 dotnet test tests\ImgHub.Integration.Tests
 

@@ -30,9 +30,12 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: 还原依赖
-        # 只 restore 测试项目 —— 直接 restore .slnx 会连带 Android head，
+        # 只 restore 测试项目（dotnet restore 一次只接一个项目）。
+        # 不用 `dotnet restore ImgHub.slnx`：那会连带 Android head，
         # 而它需要 `dotnet workload install android`（CI 装它代价很大且本 job 用不到）。
-        run: dotnet restore tests/ImgHub.Core.Tests tests/ImgHub.Integration.Tests
+        run: |
+          dotnet restore tests/ImgHub.Core.Tests
+          dotnet restore tests/ImgHub.Integration.Tests
 
       # 449 项全部离线（Offline=true + 确定性占位图），不联网、不花钱。
       - name: Core 单元测试
@@ -56,7 +59,9 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: 还原依赖
-        run: dotnet restore tests/ImgHub.Core.Tests tests/ImgHub.Integration.Tests
+        run: |
+          dotnet restore tests/ImgHub.Core.Tests
+          dotnet restore tests/ImgHub.Integration.Tests
 
       - name: Core 单元测试
         run: dotnet test tests/ImgHub.Core.Tests --no-restore --nologo

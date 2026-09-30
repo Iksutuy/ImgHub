@@ -198,10 +198,18 @@ src/ImgHub.Android/Resources/
 | `src/ImgHub.Android/ImgHub.Android.csproj` | `ApplicationDisplayVersion` | ⚠️ **需同步**（Android head 不读 `<Version>`） |
 | `build.ps1` | 从 `Directory.Build.props` **读取**版本生成产物名 | ✅ 无需改（v0.5.28 起自动读取） |
 | `src/ImgHub.Core/*` | 无版本（由 head 决定） | — |
-| 产物名 | `imghub-<版本>-<平台>.<ext>` | — |
+| 产物名 | `imghub-<版本>-<平台>.<ext>`（由 `tools/make-release.ps1` 生成） | — |
 
 > ⚠️ 改版本号时**两处都要改**（`Directory.Build.props` 与 Android csproj），
 > 否则 APK 内版本与产物名不一致。
+> `tools/make-release.ps1` 会读取两处并**在不一致时给出警告**（不阻断打包）。
+
+### `<RepositoryUrl>` 的现状（如实记录）
+
+`Directory.Build.props` 里有 `<RepositoryUrl>`，但**目前没有任何代码读取它**。
+UI 底栏显示的 `VersionText` 取自 `AssemblyInformationalVersion`，
+渲染为一个**纯文本 `TextBlock`，不可点击**（`MainView.axaml`）。
+若将来要做「点版本号跳转 GitHub」，才需要引入 `HyperlinkButton` / `LaunchUri` 并读该字段。
 
 ---
 

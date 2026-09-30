@@ -6,10 +6,10 @@
 
 | 工程 | 项数 | 覆盖 |
 |---|---|---|
-| `ImgHub.Core.Tests` | **91** | 常量目录、成本估算、错误翻译、文件名安全、图像编解码、存储、润色清洗 |
-| `ImgHub.Integration.Tests` | **68** | 端到端：生成闭环、编辑参考图顺序、撤回、持久化、润色浮窗、区域编辑、多图、成本口径、布局切换、启动自检、右键删除确认、多选批量 |
+| `ImgHub.Core.Tests` | **236** | 常量目录、成本估算、错误翻译、文件名安全、图像编解码、存储与并发写、润色清洗、五个 provider 的请求 payload、蒙版通道、AOT/网络、待处理任务恢复 |
+| `ImgHub.Integration.Tests` | **213** | 端到端：生成闭环、编辑参考图顺序、撤回、持久化、润色浮窗、区域编辑（画布缩放/跟随/历史/命中）、蒙版格式、多图、成本口径、布局契约、exe 图标契约、图标字体子集、多语言契约与通知、启动自检、右键删除确认、多选批量 |
 
-> 合计 **159** 项。改了逻辑就跑对应的那个工程。
+> 合计 **449** 项。改了逻辑就跑对应的那个工程。
 
 ## 跑测试
 
@@ -37,7 +37,12 @@ dotnet test tests\ImgHub.Integration.Tests --filter "FullyQualifiedName~RegionEd
 | `Core.Tests/SafeFilenameTests.cs` | 文件名三道防线（防路径穿越） |
 | `Core.Tests/ImagingTests.cs` | 占位图确定性、CRC32 与 Python 版一致、嗅探、缩小 |
 | `Core.Tests/SessionAndPolishTests.cs` | 配置 snake_case 读写、净化、提示词历史、润色清洗与分隔符容错 |
-| `Integration.Tests/WorkbenchFlowTests.cs` | 端到端 68 项（含 FakeStorage/FakePlatform） |
+| `Integration.Tests/WorkbenchFlowTests.cs` | 端到端闭环（含 FakeStorage/FakePlatform） |
+| `Integration.Tests/RegionCanvas*Tests.cs` | 标注画布：缩放锚点、跟随图片、视口钳制、历史、重叠不叠加、命中区域 |
+| `Integration.Tests/LocalizationContractTests.cs` | 多语言：三字典键一致、XAML 接入、VM 属性已本地化且切语言会通知 |
+| `Integration.Tests/ExeIconContractTests.cs` | exe 图标契约（ICO 目录表 offset、BMP 帧）—— 独立于生成脚本 |
+| `Core.Tests/MaskChannelTests.cs` | 蒙版 Alpha 通道语义（`alpha=0` = 要改） |
+| `Integration.Tests/MainViewLayoutContractTests.cs` | 每个按钮必须有图标、两套布局同步 |
 
 ## 加测试从哪下手
 
