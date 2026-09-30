@@ -4,10 +4,11 @@
 #  Usage (run from the repo root):
 #      powershell -ExecutionPolicy Bypass -File tools\make-release.ps1
 #      powershell -ExecutionPolicy Bypass -File tools\make-release.ps1 -SkipBuild
+#      powershell -ExecutionPolicy Bypass -File tools\make-release.ps1 -SkipAndroid
 #
 #  Produces, under <repo>\dist\ :
-#      imghub-<version>-win-x64.zip     Native AOT desktop, WHOLE folder
-#      imghub-<version>-android.apk
+#      imghub-<version>-win-x64.zip     Native AOT desktop, runnable files only
+#      imghub-<version>-android.apk     (omitted with -SkipAndroid)
 #      SHA256SUMS.txt
 #
 #  Why the desktop artifact is a ZIP and not a bare .exe: the AOT binary
@@ -22,6 +23,10 @@ param(
     # Skip rebuilding; package whatever is already in <repo>\release.
     # Useful when you just ran the AOT publish by hand.
     [switch]$SkipBuild,
+    # Ship the desktop build only: skip building and attaching the APK.
+    # The Android head is not finished yet, so desktop-only releases are the
+    # normal case for now.
+    [switch]$SkipAndroid,
     # Relative to the REPO ROOT. Empty = <repo>\dist.
     [string]$OutDir = ""
 )
@@ -93,9 +98,13 @@ if (-not $SkipBuild) {
         -o (Join-Path $release "desktop-aot")
     if ($LASTEXITCODE -ne 0) { Fail "dotnet publish (AOT) failed" }
 
-    Step "Building Android APK"
-    & (Join-Path $root "build.ps1") -Target android -Configuration $Configuration
-    if ($LASTEXITCODE -ne 0) { Fail "build.ps1 -Target android failed" }
+    if ($SkipAndroid) {
+        Step "Skipping Android build (-SkipAndroid)"
+    } else {
+        Step "Building Android APK"
+        & (Join-Path $root "build.ps1") -Target android -Configuration $Configuration
+        if ($LASTEXITCODE -ne 0) { Fail "build.ps1 -Target android failed" }
+    }
 } else {
     Step "Skipping build (-SkipBuild); packaging existing artifacts"
 }
@@ -116,14 +125,20 @@ foreach ($dll in $required) {
 }
 Write-Host ("  OK  {0,-24} {1,8:N2} MB" -f "ImgHub.Desktop.exe", ((Get-Item $aotExe).Length / 1MB))
 
-Step "Locating Android APK"
-$apk = Get-ChildItem (Join-Path $release "android") -Filter "imghub-*-android.apk" -ErrorAction SilentlyContinue |
-    Sort-Object LastWriteTime -Descending | Select-Object -First 1
-if (-not $apk) { Fail "no imghub-*-android.apk under release\android" }
-Write-Host ("  OK  {0} ({1:N2} MB)" -f $apk.Name, ($apk.Length / 1MB))
-if ($apk.Name -notlike "*$ver*") {
-    Write-Host "  NOTE: APK is named '$($apk.Name)' but <Version> is '$ver'." -ForegroundColor Yellow
-    Write-Host "        It will be repackaged under the current version name." -ForegroundColor Yellow
+$apk = $null
+$apkDest = $null
+if ($SkipAndroid) {
+    Step "Skipping Android APK (-SkipAndroid)"
+} else {
+    Step "Locating Android APK"
+    $apk = Get-ChildItem (Join-Path $release "android") -Filter "imghub-*-android.apk" -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if (-not $apk) { Fail "no imghub-*-android.apk under release\android" }
+    Write-Host ("  OK  {0} ({1:N2} MB)" -f $apk.Name, ($apk.Length / 1MB))
+    if ($apk.Name -notlike "*$ver*") {
+        Write-Host "  NOTE: APK is named '$($apk.Name)' but <Version> is '$ver'." -ForegroundColor Yellow
+        Write-Host "        It will be repackaged under the current version name." -ForegroundColor Yellow
+    }
 }
 
 # --------------------------------------------------------------- package
@@ -166,24 +181,37 @@ try {
     if (Test-Path $stage) { Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
-$apkDest = Join-Path $out "imghub-$ver-android.apk"
-Copy-Item $apk.FullName $apkDest -Force
+# Ship the APK only when it was requested and located.
+if (-not $SkipAndroid -and $apk) {
+    $apkDest = Join-Path $out "imghub-$ver-android.apk"
+    Copy-Item $apk.FullName $apkDest -Force
+}
 
 # --------------------------------------------------------------- checksums
-Step "Writing SHA256SUMS.txt"
+# Write both SHA256 (matching the bundled SHA256SUMS.txt format) and MD5,
+# because users habitually check either one.
+Step "Writing checksums"
+$assets = @($zip)
+if ($apkDest) { $assets += $apkDest }
+
 $lines = @()
-foreach ($f in @($zip, $apkDest)) {
-    $hash = (Get-FileHash $f -Algorithm SHA256).Hash.ToLower()
-    $lines += "$hash  $(Split-Path $f -Leaf)"
-    Write-Host "  $hash  $(Split-Path $f -Leaf)"
+$md5Lines = @()
+foreach ($f in $assets) {
+    $leaf = Split-Path $f -Leaf
+    $sha = (Get-FileHash $f -Algorithm SHA256).Hash.ToLower()
+    $md5 = (Get-FileHash $f -Algorithm MD5).Hash.ToLower()
+    $lines += "$sha  $leaf"
+    $md5Lines += "$md5  $leaf"
+    Write-Host ("  {0}" -f $leaf)
+    Write-Host ("    MD5    {0}" -f $md5)
+    Write-Host ("    SHA256 {0}" -f $sha)
 }
 $lines | Set-Content (Join-Path $out "SHA256SUMS.txt") -Encoding ASCII
+$md5Lines | Set-Content (Join-Path $out "MD5SUMS.txt") -Encoding ASCII
 
 # --------------------------------------------------------------- summary
 Step "Done"
 Get-ChildItem $out | ForEach-Object { Write-Host ("  {0,-34} {1,8:N2} MB" -f $_.Name, ($_.Length / 1MB)) }
 Write-Host ""
-Write-Host "Next: create a tag and a GitHub Release, then attach everything in $out"
-Write-Host "  git tag v$ver"
-Write-Host "  git push origin v$ver"
-Write-Host "Then paste .github\RELEASE_TEMPLATE.md into the release body."
+Write-Host "Next: attach everything in $out to a GitHub Release for tag v$ver"
+Write-Host "  gh release create v$ver --title `"ImgHub v$ver`" --notes-file .github\RELEASE_NOTES_v$ver.md (assets...)"
