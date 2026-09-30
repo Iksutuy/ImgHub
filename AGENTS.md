@@ -352,7 +352,8 @@ D4f（Section 内别用 `$parent[UserControl]`）。
 ## 7. 文档地图
 
 ```
-README.md                     项目总览 + 快速开始
+README.md                     项目总览 + 快速开始（英文）
+README.zh.md / .ja.md / .ko.md  同上的中 / 日 / 韩版（改 README 时**四份都要同步**）
 docs/README.md                文档索引（从这里进）
 docs/HANDOVER.md              新接手先读：跑起来 / 改功能去哪 / 排错
 docs/ARCHITECTURE.md          四层结构、数据流、五 provider 差异、扩展点

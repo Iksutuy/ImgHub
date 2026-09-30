@@ -145,3 +145,8 @@ dotnet publish src\ImgHub.Desktop -c Release -r win-x64 `
 | 打包方式变了 | `docs/DELIVERY.md` |
 | 面向 AI agent 的约定变了 | `AGENTS.md` |
 | 面向用户的变更 | `CHANGELOG.md` |
+| 改了功能清单 / 已知缺口 | `docs/FEATURES.md` + `README.md` **四份语言版本** |
+
+⚠️ **`README` 有四份**：`README.md`（英文，主文件）、`README.zh.md`、`README.ja.md`、`README.ko.md`。
+四份结构必须一致——改了主文件的功能描述、下载说明或已知限制，**其余三份要同步改**，
+否则会有一半用户看到过时信息。

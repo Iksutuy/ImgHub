@@ -1,223 +1,216 @@
-# ImgHub
+<h1 align="center">
+  <img src="src/ImgHub.App/Assets/app-icon.png" width="128" height="128" alt="ImgHub" />
+</h1>
 
-> 跨平台 AI 生图客户端 —— **Windows 桌面 + Android**，一套 UI 两端复用。
-> 支持文生图、图生图（多参考图）、**区域标注重绘**、批量出图、提示词润色、历史与成本管理。
+<p align="center">
+  <b>English</b> · <a href="README.zh.md">简体中文</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a>
+</p>
+
+<div align="center">
 
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Android-blue)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4)
 ![Avalonia](https://img.shields.io/badge/Avalonia-12.1.2-8B44AC)
-![License](https://img.shields.io/badge/license-GPL--3.0-blue)
 ![Version](https://img.shields.io/badge/version-0.5.43-blue)
+![License](https://img.shields.io/badge/license-GPL--3.0-blue)
 [![CI](https://github.com/Iksutuy/ImgHub/actions/workflows/ci.yml/badge.svg)](https://github.com/Iksutuy/ImgHub/actions/workflows/ci.yml)
 
-> 📦 下载：**Windows 桌面版** 与 **Android APK** 见 [Releases](https://github.com/Iksutuy/ImgHub/releases)（仓库不入库构建产物）。
+</div>
 
----
+<p align="center">
+  <b>A pure vibe-coding project. The desktop build is usable; the Android build is still rough.</b>
+</p>
 
-## 是什么
+# 🖼️ ImgHub
 
-一个**图形化**的 AI 生图工作台：
+ImgHub is an image-generation workbench for people who would rather click than curl. Bring your own API key for any of five providers, then generate, edit, mask and iterate on images from one window — with a cost meter running the whole time so you always know what a session has spent.
 
-| 功能 | 说明 |
-|---|---|
-| 文生图 | 多模型（OpenAI / Google / 国产 Seedream / Flux / Grok 等） |
-| 图生图 | 多参考图（最多 16），待修改图恒为第 1 位（保证主体一致） |
-| **蒙版局部重绘** | 画笔/马克笔/方框/圆圈圈出要改的区域 → 导出**带 Alpha 的蒙版**（`alpha=0` = 要改），APIMart 走 `mask_url` 真正限定改动范围 |
-| 区域标注重绘 | 同上；无蒙版能力的 provider 自动退回「原图 + 标注合成图」链路 |
-| 批量出图 | 一次多张（1–10；**上限随模型自动收窄** —— gemini 图像系服务端仅支持 1 张） |
-| 提示词润色 | LLM 生成 4 条候选，浮窗内 4 选 1 |
-| 成本管理 | 实时预估 + 按 provider 累计 + 总累计 |
-| 离线模式 | 不花钱跑通全流程（确定性占位图） |
-| 双 provider | OpenRouter（同步，支持 SSE 流式部分图）/ APIMart（异步轮询） |
-| 五 provider | 另支持 **OpenAI 官方** / **千问 DashScope**（同步+异步两条链路）/ **即梦（火山引擎）**（AK/SK 签名），契约见 [docs/](docs/) |
-| 文档对齐参数 | `background` / `output_compression` / `moderation` / 精确像素 `size` / `seed` / provider 路由（`only`/`order`/`ignore`/`sort`/`allow_fallbacks`） |
+It is aimed at the everyday loop: write a prompt, look at the result, fix the part that is wrong, keep the one you like. Everything that loop needs is in the app, so you never have to leave it to rename a file, count your spending, or hand-assemble a request body.
 
----
+# 🌠 Screenshot
 
-## 多语言（中 / 英 / 日）
+<!-- TODO: drop screenshots into assets/screenshots/ and reference them here, e.g.
+![](assets/screenshots/main-window.png)
+-->
 
-界面支持**中文 / English / 日本語**，在**设置浮层**底部切换，**即时生效**（无需重启）。
-偏好持久化在 `config.json` 的 `language` 字段。
+# 🌟 Key Features
 
-新增或修改文案只需改 `src/ImgHub.App/Ui/Localizer.cs` 的三个字典；完整说明与三个「不报错」的坑见 [docs/i18n.md](docs/i18n.md)。
+1. **Generation**
 
-## 仓库结构
+   - Text-to-image across a broad model catalog (OpenAI, Google, Seedream, Flux, Grok and more)
+   - Batch generation, 1–10 images per run; the cap narrows per model and provider, and Jimeng decides the count itself
+   - Offline mode: a deterministic placeholder renderer that drives the whole pipeline without spending anything
+2. **Reference Images and Editing**
 
-```
-imghub/
-├── src/                          C# 主实现
-│   ├── ImgHub.Core/            平台无关业务层（无 UI 依赖 —— 架构红线）
-│   ├── ImgHub.App/             共享 UI（XAML + MVVM），两端复用
-│   ├── ImgHub.Desktop/         Windows / Linux / macOS head
-│   └── ImgHub.Android/         Android head
-├── tests/
-│   ├── ImgHub.Core.Tests/      单元测试（236 项）
-│   └── ImgHub.Integration.Tests/  端到端测试（213 项）
-├── legacy/                       Python + curses 上一代实现（参考 + 行为契约）
-├── docs/                         文档（见下）
-├── tools/                        辅助脚本（图标生成、字体子集化）
-├── release/                      构建产物（不入库，走 GitHub Releases）
-├── build.ps1                     一键构建（桌面框架依赖 + Android APK）
-├── make-icon.ps1                 PNG → 多尺寸 ICO（桌面）
-├── Directory.Build.props         解决方案级 MSBuild 属性
-├── AGENTS.md                     AI / 自动化 agent 操作约定
-└── ImgHub.slnx                 解决方案文件
-```
+   - Up to 16 reference images per request (Qwen DashScope caps at 3)
+   - The image being edited is always pinned to position 1, because models read reference images positionally
+   - Mask-based inpainting: paint, marker, rectangle or ellipse a region, and the app exports an alpha mask where `alpha=0` marks the area to change
 
----
+3. **Providers**
 
-## 快速开始
+   - OpenRouter — synchronous, with SSE partial-image streaming
+   - APIMart — asynchronous polling
+   - OpenAI official
+   - Qwen DashScope — both the synchronous and asynchronous routes
+   - Jimeng (Volcengine) — AK/SK request signing
+   - Custom endpoints for enterprise gateways and dedicated DashScope domains
 
-### 前置
+4. **Workflow**
 
-- **.NET 10 SDK**
-- （Android）`dotnet workload install android` + Android SDK / JDK
+   - Prompt polishing: four LLM candidates in a popup, pick one
+   - History with per-provider and total cost tracking, plus live estimates before you spend
+   - A region markup canvas with zoom, pan, undo/redo and per-image annotation history
+   - Crash recovery: the task id is persisted, so a generation submitted before an unexpected exit can still be retrieved
 
-### 跑起来
+5. **Interface**
 
-```powershell
-# 跑测试（449 项，全部离线不花钱）
-dotnet test tests\ImgHub.Core.Tests           # 236/236
-dotnet test tests\ImgHub.Integration.Tests    # 213/213
+   - Chinese, English and Japanese, switchable from Settings with immediate effect
+   - Light and dark themes
+   - One shared UI that renders as a wide three-column layout or a narrow stacked layout
 
-# 跑桌面版
-dotnet run --project src\ImgHub.Desktop
-```
+# 🚀 Getting Started
 
-### 配置
+## Prerequisites
 
-窗口右下角 **⚙ 设置** → 选 Provider + 填 API Key → 保存。
+Windows 10/11 (x64). The .NET 10 SDK is only needed if you build from source.
 
-五个 provider：**OpenRouter** / **APIMart** / **OpenAI 官方** / **千问 DashScope** / **即梦（火山引擎）**。
-新增的两家在设置浮层里可另填**端点**（千问的业务空间专属域名、OpenAI 的企业网关）。
+## Download
 
-接入细节见 [docs/provider-openai-image-api.md](docs/provider-openai-image-api.md)
-与 [docs/provider-qwen-dashscope-api.md](docs/provider-qwen-dashscope-api.md)。
+Grab the latest build from [Releases](https://github.com/Iksutuy/ImgHub/releases):
 
-或用环境变量：
+| Platform | File | Notes |
+|---|---|---|
+| Windows 10/11 x64 | `imghub-<version>-win-x64.zip` | Native AOT — no .NET runtime required. Unzip and run. |
+| Android 7.0+ (API 23+) | `imghub-<version>-android.apk` | arm64-v8a + x86_64. Still rough. |
+
+Extract the Windows package as a whole. `ImgHub.Desktop.exe` loads `libSkiaSharp.dll`, `libHarfBuzzSharp.dll` and `av_libglesv2.dll` from its own folder — copying the executable out on its own makes it exit immediately with code `0xC0000409` and no message.
+
+Each release also ships `SHA256SUMS.txt`.
+
+## Configure
+
+Open **⚙ Settings** in the bottom-right corner, pick a provider, paste your API key and save.
+
+You can use environment variables instead:
 
 ```powershell
 $env:OPENROUTER_API_KEY = "sk-or-v1-..."
-# 或
 $env:IMGHUB_APIMART_API_KEY = "sk-..."
 ```
 
-### 先试离线模式（不花钱）
+## Try it without spending anything
 
-勾选左栏 **离线** → 输入提示词 → 点 **生成**。
+Offline mode renders deterministic placeholder images and drives the full pipeline — storage, history, undo, persistence — without contacting any API. It is hidden behind a debug flag: set `IMGHUB_DEBUG=1` before launching, and an **Offline** checkbox appears in the Settings overlay. Tick it, type a prompt and hit **Generate**.
 
-> 数据目录默认 `%LOCALAPPDATA%\imghub`，可用 `IMGHUB_HOME` 覆盖。
+Your data lives in `%LOCALAPPDATA%\imghub` by default; override it with `IMGHUB_HOME`. API keys are stored in that folder as well, and are masked in the application log. If a folder from the pre-rename layout (`%LOCALAPPDATA%\imgagent`) already exists, ImgHub keeps using it so existing images and keys stay reachable.
 
----
+# 🧩 Supported Providers
 
-## 打包
+| Provider | Transport | Notes |
+|---|---|---|
+| OpenRouter | Synchronous | SSE partial-image streaming |
+| APIMart | Asynchronous | True mask support via `mask_url` |
+| OpenAI official | Synchronous | Two endpoints; separate parameters per model |
+| Qwen DashScope | Sync + async | Route depends on the model |
+| Jimeng (Volcengine) | Async | Signed with AK/SK |
 
-```powershell
-# 桌面版（框架依赖，发布到 release/desktop）
-powershell -File build.ps1 -Target desktop
+Requests are aligned with each provider's documentation down to the parameter level — `background`, `output_compression`, `moderation`, exact-pixel `size`, `seed`, and provider routing (`only` / `order` / `ignore` / `sort` / `allow_fallbacks`). Per-provider contracts live in [docs/](docs/).
 
-# Android APK（发布到 release/android）
-powershell -File build.ps1 -Target android
+Providers that cannot take a mask fall back to compositing the original image with the annotated overlay, and the UI says so rather than pretending the mask was sent.
 
-# 不带参数 = 两者都构建
-powershell -File build.ps1
+# 🌈 Interface Languages
+
+The UI ships in **Chinese, English and Japanese**. Switch language at the bottom of the Settings overlay; it applies immediately, with no restart, and the preference is persisted in `config.json`.
+
+# 🏗️ Architecture
+
+```
+ImgHub.Core       platform-agnostic business logic (no UI dependency)
+    ↑
+ImgHub.App        shared UI (XAML + MVVM), reused by both heads
+    ↑
+ImgHub.Desktop / ImgHub.Android       thin platform heads
 ```
 
-`build.ps1` 只覆盖 **框架依赖桌面版** 与 **Android APK**。追求最小体积的
-**Native AOT** 需手动发布（详见 [docs/DELIVERY.md](docs/DELIVERY.md)）：
+`ImgHub.Core` never references Avalonia or Android. Everything the UI needs is expressed as plain data and services, which is what allows a single XAML tree to drive both Windows and Android and keeps the test suite free of UI plumbing.
+
+# 🛠️ Build from Source
 
 ```powershell
-dotnet publish src\ImgHub.Desktop -c Release -r win-x64 `
-    -p:PublishAot=true -p:DebugType=none -p:DebugSymbols=false `
-    -o release\desktop-aot
-```
+git clone https://github.com/Iksutuy/ImgHub.git
+cd ImgHub
 
-产物输出到 `release/`（**该目录不入库**，通过 GitHub Releases 分发）。
+# Tests: 449 cases, all offline — no network, no API cost
+dotnet test tests\ImgHub.Core.Tests           # 236
+dotnet test tests\ImgHub.Integration.Tests    # 213
 
-> ⚠️ AOT 产物必须**整目录**分发（`ImgHub.Desktop.exe` 需与 `libSkiaSharp.dll` /
-> `av_libglesv2.dll` / `libHarfBuzzSharp.dll` 同目录），单独拷 exe 会闪退。
+# Run the desktop app
+dotnet run --project src\ImgHub.Desktop
 
-### 打一个 Release 包
-
-一条命令产出可直接上传的发布资产（AOT 整目录 ZIP + APK + `SHA256SUMS.txt`）：
-
-```powershell
-# 全量构建并打包到 dist\
+# Package a release (AOT desktop zip + APK + SHA256SUMS.txt)
 powershell -File tools\make-release.ps1
-
-# 已手动跑过 AOT publish，只想打包现有产物
-powershell -File tools\make-release.ps1 -SkipBuild
 ```
 
-上传时的发布说明骨架见 [`.github/RELEASE_TEMPLATE.md`](.github/RELEASE_TEMPLATE.md)。
+Building the Android head additionally requires `dotnet workload install android` plus an Android SDK and a JDK. [docs/DELIVERY.md](docs/DELIVERY.md) has the full packaging guide.
 
----
+# 📁 Project Structure
 
-## 文档
+```
+ImgHub/
+├── src/
+│   ├── ImgHub.Core/                platform-agnostic business layer
+│   ├── ImgHub.App/                 shared UI (XAML + MVVM)
+│   ├── ImgHub.Desktop/             Windows / Linux / macOS head
+│   └── ImgHub.Android/             Android head
+├── tests/
+│   ├── ImgHub.Core.Tests/          236 unit tests
+│   └── ImgHub.Integration.Tests/   213 end-to-end tests
+├── legacy/                         previous Python + curses implementation
+├── docs/                           documentation
+├── tools/                          release packaging, icon and font generation
+├── build.ps1                       one-shot build (desktop + APK)
+└── ImgHub.slnx                     solution file
+```
 
-| 文档 | 内容 |
+`legacy/` is the earlier terminal client written in Python. It is kept as a reference implementation and behaviour contract for the C# rewrite — 959 Python tests still pin the expected API payloads, cost arithmetic and error handling.
+
+# 📖 Documentation
+
+| Document | Contents |
 |---|---|
-| **[docs/README.md](docs/README.md)** | 文档索引（从这里进） |
-| [docs/HANDOVER.md](docs/HANDOVER.md) | **新接手先读**：跑起来 / 改功能去哪 / 排错 |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 四层结构、数据流、五 provider 差异、扩展点 |
-| [docs/CONSTRAINTS.md](docs/CONSTRAINTS.md) | **写代码前必读**：A–I 硬约束 + 陷阱速查 |
-| [docs/DELIVERY.md](docs/DELIVERY.md) | 打包发布（三级方案 + 检查清单） |
-| [docs/FEATURES.md](docs/FEATURES.md) | 功能清单 + **已知缺口**（哪些是"有意不做"） |
-| [docs/i18n.md](docs/i18n.md) | 多语言实现与 6 个"不报错"的坑 |
-| [docs/port-status.md](docs/port-status.md) | 迁移进度与历次修复根因记录 |
-| [CONSTRAINTS 索引](docs/CONSTRAINTS.md) / [fix-plan 各轮](docs/) | 每条改动的来由与实证 |
-| [CHANGELOG.md](CHANGELOG.md) | 面向用户的版本变更记录 |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | 贡献指南（含"不能只靠编译通过"的验证纪律） |
-| [SECURITY.md](SECURITY.md) | 安全模型、凭据处理、如何私密报告问题 |
-| [AGENTS.md](AGENTS.md) | AI / 自动化 agent 的仓库操作约定 |
-| [NOTICE.md](NOTICE.md) | **第三方许可声明**（含内嵌字体的 OFL 说明） |
+| [docs/HANDOVER.md](docs/HANDOVER.md) | Start here — how to run it, where to change what, how to debug |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Layer structure, data flow, provider differences, extension points |
+| [docs/CONSTRAINTS.md](docs/CONSTRAINTS.md) | Hard constraints and the traps behind them |
+| [docs/DELIVERY.md](docs/DELIVERY.md) | Packaging and release |
+| [docs/FEATURES.md](docs/FEATURES.md) | Full feature inventory and known gaps |
+| [docs/i18n.md](docs/i18n.md) | How localisation is implemented |
+| [docs/port-status.md](docs/port-status.md) | Migration progress and per-round fix records |
+| [CHANGELOG.md](CHANGELOG.md) | Version history |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guide |
+| [SECURITY.md](SECURITY.md) | Security model and private reporting |
+| [NOTICE.md](NOTICE.md) | Third-party licences, including embedded fonts |
 
----
+# 📝 Roadmap
 
-## 架构一句话
+Known gaps, roughly in priority order:
 
-```
-Core（业务，无 UI 依赖） ← App（共享 UI） ← Desktop / Android（薄 head）
-```
+- **Android polish** — the APK builds and runs, but Chinese text rendering has not been verified on a real device, and "save to gallery" goes through the system file picker rather than writing to MediaStore.
+- **Platform coverage** — only Windows is verified. Linux and macOS should work, since Avalonia is cross-platform, but they have not been tested.
+- **Environment diagnostics** — the `doctor.py` panel from the Python version has not been ported.
+- **Keyboard shortcuts** — the shortcut hints in the message panel are text only, with no key bindings behind them.
+- **File size** — `ImageApi.cs` and `MainViewModel.cs` have grown large; splitting them is planned as a separate refactor.
 
-**架构红线**：`ImgHub.Core` 绝不引用 Avalonia / Android。
-（实战验证：App 层曾被误删，因 Core 无 UI 依赖 + 测试契约完整，得以完整重建。）
+# 🤝 Contributing
 
-详见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
+Issues and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers the three constraints that matter most: the layering rule, where to edit UI given the two layouts, and compiled bindings.
 
----
+Two things worth knowing up front:
 
-## 开发
+- Tests run entirely offline against deterministic placeholder images, so running them never costs money.
+- XAML changes are not covered by tests. If you touch a view, run the desktop app and click through it.
 
-```powershell
-# 只跑某个测试
-dotnet test tests\ImgHub.Integration.Tests --filter "FullyQualifiedName~RegionEdit"
+# 📜 License
 
-# 重新生成应用图标（桌面 ICO）
-powershell -File make-icon.ps1
+GPL-3.0 — see [LICENSE](LICENSE).
 
-# 重新生成 Android 图标（多密度 mipmap）
-powershell -File tools\make-android-icons.ps1
-```
-
----
-
-## 许可
-
-**GPL-3.0** — 见 [LICENSE](LICENSE)。
-
-第三方组件与**内嵌字体（Noto Sans SC, OFL-1.1）**的许可说明见 [NOTICE.md](NOTICE.md)。
-
-本项目**不含任何 API 凭据**；所有 key 由用户自行配置并存储于本地用户目录。
-
----
-
-## legacy/ 说明
-
-`legacy/` 是上一代 **Python + curses 终端实现**（v5.18.3），保留原因：
-
-1. **参考实现**：C# 版的行为契约来源（API 调用、成本估算、错误处理）
-2. **回归基准**：959 项 Python 测试是行为契约的"活文档"
-3. **低依赖场景**：纯标准库，可在 Termux / Pydroid 等环境跑
-
-同样以 GPL-3.0 发布。详见 [legacy/README.md](legacy/README.md)。
+Bundled third-party components and embedded fonts are listed in [NOTICE.md](NOTICE.md). No API credentials ship with the project; every key is supplied by the user and stored locally.
