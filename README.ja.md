@@ -29,9 +29,21 @@ ImgHub は「リクエストボディを手で組み立てるのは御免だ」�
 
 # 🌠 スクリーンショット
 
-<!-- TODO: スクリーンショットを assets/screenshots/ に置いてここで参照してください。例:
-![](assets/screenshots/main-window.png)
--->
+<img src="assets/screenshots/main-window.png" alt="ImgHub メインウィンドウ" width="100%">
+
+**メインウィンドウ** —— 左が生成パラメーター、中央がプレビューとマークアップのツールバー、右が履歴と provider 別の累計コスト。ステータスバーはセルフチェックの結果を示し、メッセージパネルは各ステップをその都度書き出します。
+
+<img src="assets/screenshots/mask-edit.png" alt="マスクによる部分再描画" width="100%">
+
+**マスクによる部分再描画** —— 矩形（またはマーカー／ブラシ）で領域を囲み、アルファ付きマスクとして送信します。ログには一連の流れが残ります：注釈を保存 → アルファ付きマスクを書き出し → 参照画像をアップロード → マスクをアップロード → タスクを投入。
+
+<img src="assets/screenshots/prompt-guide.png" alt="プロンプト設計ガイド" width="100%">
+
+**プロンプト設計ガイド** —— プロンプトの書き方の内蔵リファレンス。共通の総覧に加えて provider ごとの節（OpenAI GPT Image / Qwen Image）があり、両者で好まれる書き方が異なるためです。
+
+<img src="assets/screenshots/advanced-params.png" alt="詳細パラメーター" width="100%">
+
+**詳細パラメーター** —— 公式ドキュメントに合わせたパラメーター群：背景、圧縮率、部分画像ストリーミング（SSE）など。各項目は選択中のモデルが実際に受け付ける範囲へ自動的に絞られます。
 
 # 🌟 主な機能
 

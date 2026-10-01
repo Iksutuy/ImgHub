@@ -29,9 +29,21 @@ ImgHub는 "요청 본문을 손으로 짜는 건 사양하겠다"는 사람을 �
 
 # 🌠 스크린샷
 
-<!-- TODO: 스크린샷을 assets/screenshots/ 에 넣고 여기서 참조하세요. 예:
-![](assets/screenshots/main-window.png)
--->
+<img src="assets/screenshots/main-window.png" alt="ImgHub 메인 창" width="100%">
+
+**메인 창** —— 왼쪽은 생성 파라미터, 가운데는 미리보기와 마크업 도구 모음, 오른쪽은 히스토리와 provider별 누적 비용입니다. 상태 표시줄은 자체 점검 결과를 보여주고, 메시지 패널은 각 단계를 그때그때 기록합니다.
+
+<img src="assets/screenshots/mask-edit.png" alt="마스크 부분 재생성" width="100%">
+
+**마스크 부분 재생성** —— 사각형(또는 마커/브러시)으로 영역을 그린 뒤 알파가 있는 마스크로 전송합니다. 로그에 전체 흐름이 남습니다: 주석 저장 → 알파 포함 마스크 내보내기 → 참조 이미지 업로드 → 마스크 업로드 → 작업 제출.
+
+<img src="assets/screenshots/prompt-guide.png" alt="프롬프트 설계 가이드" width="100%">
+
+**프롬프트 설계 가이드** —— 프롬프트 작성법을 담은 내장 참고 자료입니다. 공통 개요에 더해 provider별 절(OpenAI GPT Image / Qwen Image)이 있으며, 둘이 선호하는 표현 방식이 다르기 때문입니다.
+
+<img src="assets/screenshots/advanced-params.png" alt="고급 파라미터" width="100%">
+
+**고급 파라미터** —— 공식 문서에 맞춘 파라미터 집합입니다: 배경, 압축률, 부분 이미지 스트리밍(SSE) 등이며, 각 항목은 선택한 모델이 실제로 받아들이는 범위로 자동 축소됩니다.
 
 # 🌟 주요 기능
 

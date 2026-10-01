@@ -29,9 +29,21 @@ It is aimed at the everyday loop: write a prompt, look at the result, fix the pa
 
 # 🌠 Screenshot
 
-<!-- TODO: drop screenshots into assets/screenshots/ and reference them here, e.g.
-![](assets/screenshots/main-window.png)
--->
+<img src="assets/screenshots/main-window.png" alt="ImgHub main window" width="100%">
+
+**Main window** — generate parameters on the left, preview and the markup toolbar in the middle, history with per-provider cost on the right. The status bar reports self-check results; the log panel explains every step as it happens.
+
+<img src="assets/screenshots/mask-edit.png" alt="Masked inpainting" width="100%">
+
+**Masked inpainting** — draw a rectangle (or paint with the marker/brush) over a region, then send it as an alpha mask. The log shows the whole chain: annotation saved, mask exported with Alpha, reference image uploaded, mask uploaded, task submitted.
+
+<img src="assets/screenshots/prompt-guide.png" alt="Prompt engineering guide" width="100%">
+
+**Prompt engineering guide** — a built-in reference for how to write prompts well, with a shared overview plus per-provider sections (OpenAI GPT Image / Qwen Image), because the two prefer different phrasings.
+
+<img src="assets/screenshots/advanced-params.png" alt="Advanced parameters" width="100%">
+
+**Advanced parameters** — the documented per-model parameter set: background, output compression, partial-image streaming (SSE), and so on, with each option narrowing to what the selected model actually accepts.
 
 # 🌟 Key Features
 

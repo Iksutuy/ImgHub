@@ -29,9 +29,21 @@ ImgHub 是一个给「懒得手写请求」的人用的 AI 生图工作台。填
 
 # 🌠 界面截图
 
-<!-- TODO: 把截图放进 assets/screenshots/ 后在此引用，例如
-![](assets/screenshots/main-window.png)
--->
+<img src="assets/screenshots/main-window.png" alt="ImgHub 主界面" width="100%">
+
+**主界面** —— 左栏是生成参数，中间是预览与标注工具条，右栏是历史与按 provider 分别计算的累计花费。状态栏给出自检结论，消息面板把每一步都写清楚。
+
+<img src="assets/screenshots/mask-edit.png" alt="蒙版局部重绘" width="100%">
+
+**蒙版局部重绘** —— 用方框（或画笔/马克笔）圈出要改的区域，以带 Alpha 的蒙版送出。日志会完整记录这条链路：标注已保存 → 导出含 Alpha 的蒙版 → 上传参考图 → 上传蒙版 → 提交任务。
+
+<img src="assets/screenshots/prompt-guide.png" alt="提示词工程指南" width="100%">
+
+**提示词工程指南** —— 内置的提示词写法参考：一份通用总览，加上按 provider 分开的小节（OpenAI GPT Image / 千问 Qwen-Image），因为两者偏好的写法并不相同。
+
+<img src="assets/screenshots/advanced-params.png" alt="高级参数" width="100%">
+
+**高级参数** —— 按官方文档对齐的参数集：背景、压缩率、流式部分图（SSE）等，并且每个选项都会收窄到当前模型真正接受的范围。
 
 # 🌟 核心功能
 
