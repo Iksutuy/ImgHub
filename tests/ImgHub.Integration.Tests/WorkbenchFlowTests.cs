@@ -31,6 +31,11 @@ internal sealed class FakePlatform : IPlatformInfo
 /// 端到端集成测试：ViewModel 编排（离线生成 → 落盘 → 历史 → 撤回 → 持久化）。
 /// 用 offline=true，不联网不花钱 —— 与 Python 版测试哲学一致（CONSTRAINTS F1）。
 /// </summary>
+/// <remarks>
+/// ⚠️ 构造函数会设进程级环境变量 <c>IMGHUB_HOME</c>，故纳入串行集合
+///    （见 <see cref="EnvironmentVariableTests"/>），避免与其它同类测试互相覆盖。
+/// </remarks>
+[Collection(EnvironmentVariableTests.Name)]
 public class WorkbenchFlowTests : IDisposable
 {
     private readonly string _home;
@@ -67,6 +72,8 @@ public class WorkbenchFlowTests : IDisposable
 
     public void Dispose()
     {
+        // 环境变量是进程级状态：用完清掉，避免污染同集合的后续测试。
+        Environment.SetEnvironmentVariable("IMGHUB_HOME", null);
         try { Directory.Delete(_home, recursive: true); } catch { }
     }
 

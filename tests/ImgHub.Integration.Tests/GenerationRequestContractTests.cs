@@ -20,6 +20,11 @@ namespace ImgHub.Integration.Tests;
 ///   这两条只有走到 ViewModel 才会暴露，且**不会抛异常**——必须断言"实际发出的请求内容"。
 ///   所以这里注入一个记录型假 API，直接检查它收到的 GenRequest。
 /// </summary>
+/// <remarks>
+/// ⚠️ 构造函数会设进程级环境变量 <c>IMGHUB_HOME</c>，故纳入串行集合
+///    （见 <see cref="EnvironmentVariableTests"/>），避免与其它同类测试互相覆盖。
+/// </remarks>
+[Collection(EnvironmentVariableTests.Name)]
 public class GenerationRequestContractTests : IDisposable
 {
     private readonly string _home;
@@ -62,6 +67,8 @@ public class GenerationRequestContractTests : IDisposable
 
     public void Dispose()
     {
+        // 环境变量是进程级状态：用完清掉，避免污染同集合的后续测试。
+        Environment.SetEnvironmentVariable("IMGHUB_HOME", null);
         try { Directory.Delete(_home, recursive: true); } catch { }
     }
 
@@ -437,7 +444,11 @@ public class GenerationRequestContractTests : IDisposable
 ///
 /// ⚠️ 这些常量是"沿用旧数据目录"的依据 —— 不能被当作残留清掉，
 ///    否则老用户升级后历史图片与配置会"凭空消失"。
+///
+/// ⚠️ 本类会读写进程级环境变量（IMGHUB_HOME / IMGAGENT_HOME），
+///    故与其它同类测试同属串行集合（见 EnvironmentVariableTests）。
 /// </summary>
+[Collection(EnvironmentVariableTests.Name)]
 public class RenamePathTests
 {
     [Fact]
@@ -454,6 +465,9 @@ public class RenamePathTests
     {
         // 显式 IMGHUB_HOME 优先
         var dir = Path.Combine(Path.GetTempPath(), "imghub-env-" + Guid.NewGuid().ToString("N"));
+        // 保存原值并在结束后恢复：环境变量是**进程级**状态，
+        // 直接置 null 会把同集合后续测试的前置条件一并清掉。
+        var oldHome = Environment.GetEnvironmentVariable("IMGHUB_HOME");
         try
         {
             Environment.SetEnvironmentVariable("IMGHUB_HOME", dir);
@@ -462,7 +476,7 @@ public class RenamePathTests
         }
         finally
         {
-            Environment.SetEnvironmentVariable("IMGHUB_HOME", null);
+            Environment.SetEnvironmentVariable("IMGHUB_HOME", oldHome);
             try { Directory.Delete(dir, true); } catch { }
         }
     }
@@ -472,6 +486,8 @@ public class RenamePathTests
     {
         // 兼容：改名前的 IMGAGENT_HOME 仍可识别（老用户环境变量不必改）
         var dir = Path.Combine(Path.GetTempPath(), "imghub-envlegacy-" + Guid.NewGuid().ToString("N"));
+        var oldHome = Environment.GetEnvironmentVariable("IMGHUB_HOME");
+        var oldLegacy = Environment.GetEnvironmentVariable("IMGAGENT_HOME");
         try
         {
             Environment.SetEnvironmentVariable("IMGHUB_HOME", null);
@@ -481,7 +497,8 @@ public class RenamePathTests
         }
         finally
         {
-            Environment.SetEnvironmentVariable("IMGAGENT_HOME", null);
+            Environment.SetEnvironmentVariable("IMGHUB_HOME", oldHome);
+            Environment.SetEnvironmentVariable("IMGAGENT_HOME", oldLegacy);
             try { Directory.Delete(dir, true); } catch { }
         }
     }
