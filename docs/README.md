@@ -20,7 +20,7 @@
 | **[CONSTRAINTS.md](CONSTRAINTS.md)** | **哪些事绝对不能做** / 为什么 | 写代码前必读 |
 | **[DELIVERY.md](DELIVERY.md)** | 怎么打包 / 产物在哪 / 各平台注意事项 | 要发布的人 |
 | **[port-status.md](port-status.md)** | 迁移进度 / 历次修复记录 / 已知限制 | 查历史与现状 |
-| [../AGENTS.md](../AGENTS.md) | AI / 自动化 agent 的仓库操作约定 | 用 agent 改代码时 |
+| **[../CONTRIBUTING.md](../CONTRIBUTING.md)** | 贡献指南：环境、硬约束、验证纪律、提交规范 | 要提交代码时 |
 | [fix-plan-v5.22.md](fix-plan-v5.22.md) | v5.22.0 那一轮的 14 项修复方案与验收 | 查某条改动的来由 |
 | [fix-plan-v5.23.md](fix-plan-v5.23.md) | **v5.23.0 那一轮**：UI/交互 13 项 + 实证根因与验收 | 查某条改动的来由 |
 | [fix-plan-v5.24.md](fix-plan-v5.24.md) | **v5.24.0 那一轮**：AOT JSON 修复 / 网络加固 / 分级日志 / 悬停交互 | 查某条改动的来由；AOT 问题先看它 |

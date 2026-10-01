@@ -939,7 +939,7 @@
               </ItemsPanelTemplate>
             </ListBox.ItemsPanel>
             <!-- ⚠️ DataTemplate 内 DataContext 是**列表项类型**（Guide），必须先声明 x:DataType，
-                 否则编译绑定无法解析 Title（AGENTS §4.1）。 -->
+                 否则编译绑定无法解析 Title（见 docs/CONSTRAINTS.md H1d）。 -->
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="core:PromptGuide+Guide">
                 <TextBlock Text="{CompiledBinding Title}" FontSize="13" Padding="4,2"/>

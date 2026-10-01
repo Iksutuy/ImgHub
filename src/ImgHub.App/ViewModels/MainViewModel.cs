@@ -1097,7 +1097,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     ///
     /// ⚠️ v0.5.37：**已不再是 UI 开关** —— 图标改为内嵌字体（跨平台安全），
     ///   设置里的复选框已删除。字段保留是因为 `AppConfig.UseIcons` 是
-    ///   config.json 与 legacy Python 的 1:1 契约（删了会破坏互通，见 NOTICE/AGENTS 的兼容策略）。
+    ///   config.json 与 legacy Python 的 1:1 契约（删了会破坏互通，见 NOTICE.md 的兼容策略）。
     ///   现在它只作为"读取旧配置 + 原样写回"的透传字段，不再影响界面。
     /// </summary>
     public bool UseIcons { get; set; } = true;
@@ -3130,7 +3130,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     /// 结果**编译期**就报错：
     /// <code>The type 'ImgHub.App.ViewModels.MainViewModel' does not have an indexer</code>
     /// —— 即 **CompiledBinding 忽略 `Source=`，仍按 `x:DataType` 推断源类型**。
-    /// 编译绑定是 AOT 的硬要求（AGENTS §4.1），所以必须让源类型就是 VM：
+    /// 编译绑定是 AOT 的硬要求（docs/CONSTRAINTS.md H1d），所以必须让源类型就是 VM：
     /// 在 VM 上暴露这个属性，路径写 `L[key]`，编译期即可检查索引器存在。
     ///
     /// 通知：`Language` 变化时本类会 <c>OnPropertyChanged(nameof(L))</c> →

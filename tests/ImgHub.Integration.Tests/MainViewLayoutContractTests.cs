@@ -158,7 +158,7 @@ public class MainViewLayoutContractTests
     [Fact]
     public void NoHiddenBottomBar_WithUnreachableButtons()
     {
-        // AGENTS.md §3.3/§6：按钮必须可达 —— 不允许再出现 IsVisible="False" 的整条底栏。
+        // 约束 D4b/D4c：按钮必须可达 —— 不允许再出现 IsVisible="False" 的整条底栏。
         // （旧底栏 `IsVisible="False"` 里的按钮全部不可达，是历史事故。）
         Assert.DoesNotContain("底栏暂隐藏", Xaml);
     }

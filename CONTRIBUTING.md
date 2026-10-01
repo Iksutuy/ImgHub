@@ -2,7 +2,6 @@
 
 > 先读 [`docs/HANDOVER.md`](docs/HANDOVER.md)（怎么跑起来 / 改功能去哪 / 排错），
 > 再读 [`docs/CONSTRAINTS.md`](docs/CONSTRAINTS.md)（**哪些事绝对不能做**）。
-> 用 AI agent 改代码的，另见 [`AGENTS.md`](AGENTS.md)。
 
 ---
 
@@ -143,7 +142,6 @@ dotnet publish src\ImgHub.Desktop -c Release -r win-x64 `
 | 新增一轮修复 | `docs/fix-plan-v*.md` + `docs/port-status.md` |
 | 加了参数 / 模型 / 绘制工具 | `docs/HANDOVER.md` 的分步清单 |
 | 打包方式变了 | `docs/DELIVERY.md` |
-| 面向 AI agent 的约定变了 | `AGENTS.md` |
 | 面向用户的变更 | `CHANGELOG.md` |
 | 改了功能清单 / 已知缺口 | `docs/FEATURES.md` + `README.md` **四份语言版本** |
 

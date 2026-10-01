@@ -15,8 +15,9 @@
 #  needs libSkiaSharp.dll / libHarfBuzzSharp.dll / av_libglesv2.dll next to
 #  it, otherwise it dies with 0xC0000409 on startup (CONSTRAINTS E1).
 #
-#  NOTE: ASCII-only on purpose (AGENTS.md 3.6). Windows PowerShell 5.1 reads
-#        UTF-8-no-BOM as ANSI, so CJK comments would break parsing.
+#  NOTE: ASCII-only on purpose (see CONTRIBUTING.md, section 5). Windows
+#        PowerShell 5.1 reads UTF-8-no-BOM as ANSI, so CJK comments would
+#        break parsing.
 # =====================================================================
 param(
     [string]$Configuration = "Release",

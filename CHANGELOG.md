@@ -13,6 +13,14 @@
 
 ## [Unreleased]
 
+### Removed
+
+- **`AGENTS.md`**（AI / 自动化 agent 的仓库操作约定）与 **`reasonix.toml`**（指向本机的
+  Reasonix 配置）—— 前者属个人 LLM 工作流产物，后者只对本机有效，都不适合随仓库分发。
+  其中的**硬约束与验证纪律已由 [`CONTRIBUTING.md`](CONTRIBUTING.md) 与
+  [`docs/CONSTRAINTS.md`](docs/CONSTRAINTS.md) 覆盖**，信息无损失。
+  `reasonix.toml` 已加入 `.gitignore`，需要时自行创建。
+
 ## [0.5.43] - 2026-09-30
 
 ### Added

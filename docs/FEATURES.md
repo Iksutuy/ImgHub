@@ -18,7 +18,7 @@
 | AOT 启动验收 | 启动 → 等 12 s → 判存活 → 杀进程 | ✅ 存活（未秒崩），启动日志无异常 |
 | 分层红线 A1 | Core 是否引用 UI / 平台 | ✅ **零命中**（全 Core 无任何 `using Avalonia.*` / `Android.*`） |
 | 分层依赖方向 | 4 个 csproj 的 ProjectReference | ✅ `Android/Desktop → App → Core`，Core 无引用，**无环** |
-| Android 构建 | `dotnet build` 全解决方案 | ❌ **本机 Android SDK 缺失（XA5207 / API 36）** —— 环境问题，**非代码回归**（见 AGENTS.md） |
+| Android 构建 | `dotnet build` 全解决方案 | ❌ **本机 Android SDK 缺失（XA5207 / API 36）** —— 环境问题，**非代码回归** |
 
 ### 第 1 批 P0 正确性修复（已落地，9 项）
 
